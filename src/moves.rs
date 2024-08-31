@@ -1,38 +1,168 @@
-use std::fmt::Display;
-
+use crate::bounded_i32::BoundedI32;
 use crate::effect::{Effect, PlayerId};
 use crate::game::HazardId;
 use crate::poketype::Type;
 use crate::stat::StatId;
 use crate::status::Status;
+use std::fmt::Display;
 
 #[derive(Debug)]
 pub struct Move {
-    id: MoveId,
-    pp: Pp,
-    damage_type: Mtype,
-    poke_type: Type,
-    base_power: BasePower,
-    priority: Priority,
-    effects: Vec<Effect>,
-    freq: Freq,
-    target: PlayerId,
-    accuracy: Accuracy,
+    pub id: MoveId,
+    pub pp: BoundedI32,
+    pub damage_type: Mtype,
+    pub poke_type: Type,
+    pub base_power: Option<i32>,
+    pub priority: i8,
+    pub effects: Vec<Effect>,
+    pub freq: Option<f32>,
+    pub target: PlayerId,
+    pub accuracy: Option<f32>,
 }
 
 impl From<MoveId> for Move {
-    fn from(value: MoveId) -> Self {
-        Self {
-            id: value,
-            pp: Pp::from(value),
-            damage_type: Mtype::from(value),
-            poke_type: Type::from(value),
-            base_power: BasePower::from(value),
-            priority: Priority::from(value),
-            effects: Vec::from(value),
-            freq: Freq::from(value),
-            target: PlayerId::from(value),
-            accuracy: Accuracy::from(value),
+    fn from(id: MoveId) -> Self {
+        match id {
+            MoveId::Default => Self {
+                id,
+                pp: BoundedI32::new(24, 0, 24).unwrap(),
+                damage_type: Mtype::Physical,
+                poke_type: Type::Normal,
+                base_power: None,
+                priority: 0,
+                effects: Vec::new(),
+                freq: None,
+                target: PlayerId::Inactive,
+                accuracy: None,
+            },
+            MoveId::IronHead => Self {
+                id,
+                poke_type: Type::Steel,
+                base_power: Some(80),
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Flinch)],
+                freq: Some(0.3),
+                ..Default::default()
+            },
+            MoveId::BodySlam => Self {
+                id,
+                base_power: Some(85),
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)],
+                freq: Some(0.3),
+                ..Default::default()
+            },
+            MoveId::Uturn => Self {
+                id,
+                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                damage_type: Mtype::Physical,
+                poke_type: Type::Bug,
+                base_power: Some(70),
+                effects: vec![Effect::MidSwitch(PlayerId::Active)],
+                ..Default::default()
+            },
+            MoveId::Stealthrock => Self {
+                id,
+                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                damage_type: Mtype::Status,
+                poke_type: Type::Rock,
+                effects: vec![Effect::InflictHazard(
+                    PlayerId::Inactive,
+                    HazardId::Stealthrock,
+                )],
+                ..Default::default()
+            },
+            MoveId::Thunderbolt => Self {
+                id,
+                damage_type: Mtype::Special,
+                poke_type: Type::Electric,
+                base_power: Some(95),
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)],
+                freq: Some(0.1),
+                ..Default::default()
+            },
+            MoveId::Roost => Self {
+                id,
+                pp: BoundedI32::new(16, 0, 16).unwrap(),
+                damage_type: Mtype::Status,
+                poke_type: Type::Flying,
+                effects: vec![Effect::Heal(PlayerId::Active)],
+                ..Default::default()
+            },
+            MoveId::Hpice => Self {
+                id,
+                damage_type: Mtype::Special,
+                poke_type: Type::Ice,
+                base_power: Some(70),
+                ..Default::default()
+            },
+            MoveId::Firepunch => Self {
+                id,
+                poke_type: Type::Fire,
+                base_power: Some(75),
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Burn)],
+                freq: Some(0.1),
+                ..Default::default()
+            },
+            MoveId::Refresh => Self {
+                id,
+                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                damage_type: Mtype::Status,
+                effects: vec![Effect::Cure(PlayerId::Active)],
+                ..Default::default()
+            },
+            MoveId::Hydropump => Self {
+                id,
+                poke_type: Type::Water,
+                damage_type: Mtype::Special,
+                base_power: Some(120),
+                accuracy: Some(0.8),
+                ..Default::default()
+            },
+            MoveId::Thunderwave => Self {
+                id,
+                poke_type: Type::Electric,
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)],
+                ..Default::default()
+            },
+            MoveId::Icebeam => Self {
+                id,
+                damage_type: Mtype::Special,
+                poke_type: Type::Ice,
+                base_power: Some(95),
+                ..Default::default()
+            },
+            MoveId::Rapidspin => Self {
+                id,
+                base_power: Some(20),
+                pp: BoundedI32::new(64, 0, 64).unwrap(),
+                effects: vec![Effect::ClearHazard(PlayerId::Active)],
+                ..Default::default()
+            },
+            MoveId::Fireblast => Self {
+                id,
+                base_power: Some(120),
+                damage_type: Mtype::Special,
+                poke_type: Type::Fire,
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Burn)],
+                ..Default::default()
+            },
+            MoveId::Earthpower => Self {
+                id,
+                base_power: Some(90),
+                damage_type: Mtype::Special,
+                poke_type: Type::Ground,
+                effects: vec![Effect::AlterStat(PlayerId::Inactive, StatId::Spd, -1)],
+                ..Default::default()
+            },
+            MoveId::Explosion => todo!(),
+            MoveId::Crunch => todo!(),
+            MoveId::Pursuit => todo!(),
+            MoveId::Superpower => todo!(),
+            MoveId::Stoneedge => todo!(),
+            MoveId::Spore => todo!(),
+            MoveId::Seedbomb => todo!(),
+            MoveId::Machpunch => todo!(),
+            MoveId::Struggle => todo!(),
+            MoveId::Switch(_) => todo!(),
         }
     }
 }
@@ -56,6 +186,7 @@ impl From<MoveId> for PlayerId {
 #[derive(PartialEq, Debug, Default, Copy, Clone)]
 pub enum MoveId {
     #[default]
+    Default,
     IronHead,
     BodySlam,
     Uturn,
@@ -90,49 +221,13 @@ pub enum Mtype {
     Status,
 }
 
-#[derive(Debug, Default)]
-pub struct Pp {
-    pub current: i8,
-    pub max: i8,
-}
-
-#[derive(Debug, Default, PartialOrd, PartialEq, Clone, Copy)]
-pub struct Priority(i8);
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Freq(Option<f32>);
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct BasePower(i32);
-
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Accuracy(Option<f32>);
-
-impl From<i8> for Pp {
-    fn from(value: i8) -> Self {
-        Self {
-            current: value,
-            max: value,
-        }
-    }
-}
-
-impl From<MoveId> for Priority {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::Switch(_) => Priority(5),
-            MoveId::Machpunch => Priority(1),
-            _ => Priority(0),
-        }
-    }
-}
-
 impl Display for MoveId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
             "{}",
             match self {
+                MoveId::Default => String::from("Default"),
                 MoveId::IronHead => String::from("Iron Head"),
                 MoveId::BodySlam => String::from("Body Slam"),
                 MoveId::Uturn => String::from("U turn"),
@@ -160,188 +255,5 @@ impl Display for MoveId {
                 MoveId::Switch(_) => String::from("Switch"),
             }
         )
-    }
-}
-
-impl From<MoveId> for Type {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => Type::Steel,
-            MoveId::BodySlam => Type::Normal,
-            MoveId::Uturn => Type::Bug,
-            MoveId::Stealthrock => Type::Rock,
-            MoveId::Thunderbolt => Type::Electric,
-            MoveId::Roost => Type::Flying,
-            MoveId::Hpice => Type::Ice,
-            MoveId::Firepunch => Type::Fire,
-            MoveId::Refresh => Type::Normal,
-            MoveId::Hydropump => Type::Water,
-            MoveId::Thunderwave => Type::Electric,
-            MoveId::Icebeam => Type::Ice,
-            MoveId::Rapidspin => Type::Normal,
-            MoveId::Fireblast => Type::Fire,
-            MoveId::Earthpower => Type::Ground,
-            MoveId::Explosion => Type::Normal,
-            MoveId::Crunch => Type::Dark,
-            MoveId::Pursuit => Type::Dark,
-            MoveId::Superpower => Type::Fighting,
-            MoveId::Stoneedge => Type::Rock,
-            MoveId::Spore => Type::Grass,
-            MoveId::Seedbomb => Type::Grass,
-            MoveId::Machpunch => Type::Fighting,
-            _ => Type::None,
-        }
-    }
-}
-
-impl From<MoveId> for Mtype {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => Mtype::Physical,
-            MoveId::BodySlam => Mtype::Physical,
-            MoveId::Uturn => Mtype::Physical,
-            MoveId::Stealthrock => Mtype::Status,
-            MoveId::Thunderbolt => Mtype::Special,
-            MoveId::Roost => Mtype::Status,
-            MoveId::Hpice => Mtype::Special,
-            MoveId::Firepunch => Mtype::Physical,
-            MoveId::Refresh => Mtype::Status,
-            MoveId::Hydropump => Mtype::Special,
-            MoveId::Thunderwave => Mtype::Status,
-            MoveId::Icebeam => Mtype::Special,
-            MoveId::Rapidspin => Mtype::Physical,
-            MoveId::Fireblast => Mtype::Special,
-            MoveId::Earthpower => Mtype::Special,
-            MoveId::Explosion => Mtype::Physical,
-            MoveId::Crunch => Mtype::Physical,
-            MoveId::Pursuit => Mtype::Physical,
-            MoveId::Superpower => Mtype::Physical,
-            MoveId::Stoneedge => Mtype::Physical,
-            MoveId::Spore => Mtype::Status,
-            MoveId::Seedbomb => Mtype::Physical,
-            MoveId::Machpunch => Mtype::Physical,
-            MoveId::Struggle => Mtype::Physical,
-            _ => Mtype::Status,
-        }
-    }
-}
-
-impl From<MoveId> for Freq {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => Self(Some(0.3)),
-            MoveId::BodySlam => Self(Some(0.3)),
-            MoveId::Thunderbolt => Self(Some(0.1)),
-            MoveId::Firepunch => Self(Some(0.1)),
-            MoveId::Icebeam => Self(Some(0.1)),
-            MoveId::Fireblast => Self(Some(0.1)),
-            MoveId::Earthpower => Self(Some(0.2)),
-            MoveId::Crunch => Self(Some(0.2)),
-            _ => Self::default(),
-        }
-    }
-}
-
-impl From<MoveId> for Vec<Effect> {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Flinch)],
-            MoveId::BodySlam => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)],
-            MoveId::Uturn => vec![Effect::MidSwitch(PlayerId::Active)],
-            MoveId::Stealthrock => vec![Effect::InflictHazard(
-                PlayerId::Inactive,
-                HazardId::Stealthrock,
-            )],
-            MoveId::Thunderbolt => {
-                vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)]
-            }
-            MoveId::Roost => vec![Effect::Heal(PlayerId::Active)],
-            MoveId::Firepunch => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Burn)],
-            MoveId::Refresh => vec![Effect::Cure(PlayerId::Active)],
-            MoveId::Thunderwave => {
-                vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)]
-            }
-            MoveId::Icebeam => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Paralyse)],
-            MoveId::Rapidspin => vec![Effect::ClearHazard(PlayerId::Active)],
-            MoveId::Fireblast => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Burn)],
-            MoveId::Earthpower => vec![Effect::AlterStat(PlayerId::Inactive, StatId::Spd, -1)],
-            MoveId::Explosion => vec![Effect::OHKO(PlayerId::Active)],
-            MoveId::Crunch => vec![Effect::AlterStat(PlayerId::Inactive, StatId::Def, -1)],
-            MoveId::Superpower => vec![
-                Effect::AlterStat(PlayerId::Active, StatId::Atk, -1),
-                Effect::AlterStat(PlayerId::Active, StatId::Def, -1),
-            ],
-            MoveId::Spore => vec![Effect::InflictStatus(PlayerId::Inactive, Status::Sleep)],
-            _ => Self::default(),
-        }
-    }
-}
-
-impl From<MoveId> for BasePower {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => Self(80),
-            MoveId::BodySlam => Self(85),
-            MoveId::Uturn => Self(70),
-            MoveId::Thunderbolt => Self(95),
-            MoveId::Hpice => Self(70),
-            MoveId::Firepunch => Self(75),
-            MoveId::Hydropump => Self(120),
-            MoveId::Icebeam => Self(95),
-            MoveId::Rapidspin => Self(20),
-            MoveId::Fireblast => Self(120),
-            MoveId::Earthpower => Self(90),
-            MoveId::Explosion => Self(250),
-            MoveId::Crunch => Self(90),
-            MoveId::Pursuit => Self(40),
-            MoveId::Superpower => Self(120),
-            MoveId::Stoneedge => Self(120),
-            MoveId::Seedbomb => Self(80),
-            MoveId::Machpunch => Self(40),
-            MoveId::Struggle => Self(50),
-            _ => Self::default(),
-        }
-    }
-}
-
-impl From<MoveId> for Pp {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::IronHead => Self::from(24),
-            MoveId::BodySlam => Self::from(24),
-            MoveId::Uturn => Self::from(32),
-            MoveId::Stealthrock => Self::from(32),
-            MoveId::Thunderbolt => Self::from(24),
-            MoveId::Roost => Self::from(16),
-            MoveId::Hpice => Self::from(24),
-            MoveId::Firepunch => Self::from(24),
-            MoveId::Refresh => Self::from(32),
-            MoveId::Hydropump => Self::from(8),
-            MoveId::Thunderwave => Self::from(32),
-            MoveId::Icebeam => Self::from(16),
-            MoveId::Rapidspin => Self::from(64),
-            MoveId::Fireblast => Self::from(8),
-            MoveId::Earthpower => Self::from(16),
-            MoveId::Explosion => Self::from(8),
-            MoveId::Crunch => Self::from(24),
-            MoveId::Pursuit => Self::from(32),
-            MoveId::Superpower => Self::from(8),
-            MoveId::Stoneedge => Self::from(8),
-            MoveId::Spore => Self::from(24),
-            MoveId::Seedbomb => Self::from(24),
-            MoveId::Machpunch => Self::from(48),
-            _ => Self::default(),
-        }
-    }
-}
-
-impl From<MoveId> for Accuracy {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::Hydropump => Self(Some(0.8)),
-            MoveId::Fireblast => Self(Some(0.85)),
-            MoveId::Stoneedge => Self(Some(0.8)),
-            _ => Self::default(),
-        }
     }
 }
