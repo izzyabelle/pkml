@@ -1,4 +1,5 @@
-use crate::game::{Game, HazardId, WeatherId};
+use crate::bounded_i32::BoundedI32;
+use crate::game::{HazardId, WeatherId};
 use crate::stat::StatId;
 use crate::status::Status;
 use crate::EmptyResult;
@@ -12,7 +13,7 @@ pub enum PlayerId {
 }
 
 impl PlayerId {
-    pub fn invert(&mut self) -> EmptyResult<()> {
+    pub fn invert(&mut self) -> EmptyResult {
         match self {
             PlayerId::Player1 => *self = PlayerId::Player2,
             PlayerId::Player2 => *self = PlayerId::Player1,
@@ -46,17 +47,18 @@ pub enum Effect {
     Switch(PlayerId, usize),
 }
 
-impl From<Damage> for i32 {
-    fn from(value: Damage) -> Self {
-        match value {
-            Damage::Normal(b) => b,
-            Damage::Fractional(n, d) => n / d,
+impl Damage {
+    pub fn collapse(&self, value: BoundedI32) -> i32 {
+        match self {
+            Self::Normal(out) => *out,
+            Self::Fractional(n, d) => value.max * n / d,
         }
     }
 }
 
+/*
 impl Game {
-    fn apply_effects(&mut self, effects: Vec<Effect>) -> EmptyResult<()> {
+    fn apply_effects(&mut self, effects: Vec<Effect>) -> EmptyResult {
         for effect in effects {
             match effect {
                 Effect::InflictStatus(target, status) => {
@@ -236,3 +238,4 @@ impl Game {
         Ok(())
     }
 }
+*/

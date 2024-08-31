@@ -1,14 +1,10 @@
-use std::{
-    fmt::Error,
-    ops::{Index, IndexMut},
+use std::ops::{Index, IndexMut};
+
+use crate::{
+    moves::Move,
+    trigger::{Ability, Item},
+    EmptyResult,
 };
-
-use crate::{trigger::Item, EmptyResult};
-
-pub enum Direction {
-    Up,
-    Down,
-}
 
 #[derive(Debug, Default)]
 pub struct SelVec<T> {
@@ -47,40 +43,36 @@ impl<T> IndexMut<usize> for SelVec<T> {
 }
 
 impl<T> SelVec<T> {
-    pub fn shift(&mut self, dir: Direction) -> EmptyResult<()> {
-        match dir {
-            Direction::Up => {
-                if self.selection != self.data.len() - 1 {
-                    self.selection += 1;
-                }
-            }
-            Direction::Down => {
-                if self.selection != 0 {
-                    self.selection -= 1;
-                }
-            }
-        }
-        Ok(())
-    }
-
-    pub fn kill(&mut self) -> EmptyResult<()> {
+    pub fn kill(&mut self) -> EmptyResult {
         self.data.swap(self.selection, self.dead - 1);
         self.dead -= 1;
         self.active = None;
         Ok(())
     }
+
+    pub fn deactivate(&mut self) -> EmptyResult {
+        self.active = None;
+        Ok(())
+    }
 }
 
-impl<Move> SelVec<Move> {
-    pub fn activate(&mut self, item: Item) -> EmptyResult<()> {
-        if self.lock && self.selection != self.active {
-            return Result::Err();
+impl SelVec<Move> {
+    pub fn activate(&mut self, item: Item, ability: Ability) -> Result<(), &'static str> {
+        if self.lock && self.selection != self.active.expect("Locked without active move") {
+            return Err("Locked into different move");
         }
-        if self.selection < self.dead && !self.lock {
+
+        if self.selection < self.dead {
             self.active = Some(self.selection);
+            self.data[self.selection].pp -= if ability == Ability::Pressure { 2 } else { 1 };
+            self.lock = item.is_choice();
             Ok(())
         } else {
-            Error
+            Err("Selected move has no pp")
         }
     }
 }
+
+// impl SelVec<Pokemon> {
+//     pub fn activate(&mut self, )
+// }

@@ -2,9 +2,9 @@ use pkml::app::{App, AppResult};
 use pkml::event::{Event, EventHandler};
 use pkml::handler::handle_key_events;
 use pkml::tui::Tui;
-use std::io;
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
+use std::io;
 
 fn main() -> AppResult<()> {
     // Create an application.

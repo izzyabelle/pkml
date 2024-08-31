@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 use std::fmt::Display;
 
+use crate::bounded_i32::BoundedI32;
 use crate::moves::{Move, MoveId};
 use crate::pokemon::Pokemon;
 use crate::poketype::{Poketype, Type};
 use crate::selvec::SelVec;
-use crate::stat::{Hp, Stat, StatId};
+use crate::stat::{Stat, StatId};
 use crate::trigger::Ability;
 use crate::trigger::Item;
 
@@ -42,7 +43,7 @@ impl From<PokeId> for Pokemon {
         match value {
             PokeId::Jirachi => Self {
                 ability: Ability::SereneGrace,
-                hp: Hp::from(404),
+                hp: BoundedI32::new(404, 0, 404).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![
@@ -63,7 +64,7 @@ impl From<PokeId> for Pokemon {
             },
             PokeId::Zapdos => Self {
                 ability: Ability::Pressure,
-                hp: Hp::from(383),
+                hp: BoundedI32::new(383, 0, 383).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![
@@ -84,7 +85,7 @@ impl From<PokeId> for Pokemon {
             },
             PokeId::Starmie => Self {
                 ability: Ability::NaturalCure,
-                hp: Hp::from(261),
+                hp: BoundedI32::new(261, 0, 261).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![
@@ -105,7 +106,7 @@ impl From<PokeId> for Pokemon {
             },
             PokeId::Heatran => Self {
                 ability: Ability::Flashfire,
-                hp: Hp::from(261),
+                hp: BoundedI32::new(261, 0, 261).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![
@@ -126,7 +127,7 @@ impl From<PokeId> for Pokemon {
             },
             PokeId::Tyranitar => Self {
                 ability: Ability::SandStream,
-                hp: Hp::from(341),
+                hp: BoundedI32::new(341, 0, 341).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![
@@ -147,7 +148,7 @@ impl From<PokeId> for Pokemon {
             },
             PokeId::Breloom => Self {
                 ability: Ability::Poisonheal,
-                hp: Hp::from(280),
+                hp: BoundedI32::new(280, 0, 280).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
                 moves: SelVec::from(vec![

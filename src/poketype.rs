@@ -1,5 +1,3 @@
-use std::default;
-
 use crate::pokemon::Pokemon;
 
 /// Basically just a database of the type chart
