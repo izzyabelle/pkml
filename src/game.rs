@@ -1,4 +1,4 @@
-use crate::{player::Player, selvec::SelVec};
+use crate::{player::Player, selvec::PointerVec};
 
 pub enum GameResult {
     Winner(usize),
@@ -39,9 +39,19 @@ pub enum WeatherId {
 
 #[derive(Debug, Default)]
 pub struct Game {
-    pub players: SelVec<Player>,
+    pub players: PointerVec<Player>,
     pub turn_count: i32,
     pub weather: Option<WeatherId>,
-    pub active_player: usize,
     pub log: Vec<String>,
+}
+
+impl Game {
+    pub fn new() -> Self {
+        Self {
+            players: PointerVec::from(vec![Player::new(false), Player::new(true)]),
+            turn_count: 0,
+            weather: None,
+            log: vec![String::new()],
+        }
+    }
 }

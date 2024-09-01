@@ -20,6 +20,12 @@ pub struct Move {
     pub accuracy: Option<f32>,
 }
 
+impl Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.id)
+    }
+}
+
 impl From<MoveId> for Move {
     fn from(id: MoveId) -> Self {
         match id {
@@ -153,16 +159,36 @@ impl From<MoveId> for Move {
                 effects: vec![Effect::AlterStat(PlayerId::Inactive, StatId::Spd, -1)],
                 ..Default::default()
             },
-            MoveId::Explosion => todo!(),
-            MoveId::Crunch => todo!(),
-            MoveId::Pursuit => todo!(),
-            MoveId::Superpower => todo!(),
-            MoveId::Stoneedge => todo!(),
-            MoveId::Spore => todo!(),
-            MoveId::Seedbomb => todo!(),
-            MoveId::Machpunch => todo!(),
-            MoveId::Struggle => todo!(),
-            MoveId::Switch(_) => todo!(),
+            MoveId::Explosion => Self {
+                ..Default::default()
+            },
+            MoveId::Crunch => Self {
+                ..Default::default()
+            },
+            MoveId::Pursuit => Self {
+                ..Default::default()
+            },
+            MoveId::Superpower => Self {
+                ..Default::default()
+            },
+            MoveId::Stoneedge => Self {
+                ..Default::default()
+            },
+            MoveId::Spore => Self {
+                ..Default::default()
+            },
+            MoveId::Seedbomb => Self {
+                ..Default::default()
+            },
+            MoveId::Machpunch => Self {
+                ..Default::default()
+            },
+            MoveId::Struggle => Self {
+                ..Default::default()
+            },
+            MoveId::Switch(_) => Self {
+                ..Default::default()
+            },
         }
     }
 }

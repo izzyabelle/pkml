@@ -14,13 +14,13 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.quit();
             }
         }
+        KeyCode::Down => {
+            app.ui.pokelist[0].select_next();
+        }
+        KeyCode::Up => {
+            app.ui.pokelist[0].select_previous();
+        }
         // Counter handlers
-        KeyCode::Right => {
-            app.increment_counter();
-        }
-        KeyCode::Left => {
-            app.decrement_counter();
-        }
         // Other handlers you could add here.
         _ => {}
     }

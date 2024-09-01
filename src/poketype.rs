@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::pokemon::Pokemon;
 
 /// Basically just a database of the type chart
@@ -11,6 +13,19 @@ pub enum Poketype {
 impl Default for Poketype {
     fn default() -> Self {
         Self::Mono(Default::default())
+    }
+}
+
+impl Display for Poketype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Poketype::Mono(data) => format!("{}", data),
+                Poketype::Dual(data) => format!("{} / {}", data[0], data[1]),
+            }
+        )
     }
 }
 
@@ -35,6 +50,35 @@ pub enum Type {
     Dark,
     Steel,
     None,
+}
+
+impl Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Type::Normal => String::from("Normal"),
+                Type::Fire => String::from("Fire"),
+                Type::Water => String::from("Water"),
+                Type::Electric => String::from("Electric"),
+                Type::Grass => String::from("Grass"),
+                Type::Ice => String::from("Ice"),
+                Type::Fighting => String::from("Fighting"),
+                Type::Poison => String::from("Poison"),
+                Type::Ground => String::from("Ground"),
+                Type::Flying => String::from("Flying"),
+                Type::Psychic => String::from("Psychic"),
+                Type::Bug => String::from("Bug"),
+                Type::Rock => String::from("Rock"),
+                Type::Ghost => String::from("Ghost"),
+                Type::Dragon => String::from("Dragon"),
+                Type::Dark => String::from("Dark"),
+                Type::Steel => String::from("Steel"),
+                Type::None => String::from("None"),
+            }
+        )
+    }
 }
 
 impl Type {

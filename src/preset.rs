@@ -5,7 +5,7 @@ use crate::bounded_i32::BoundedI32;
 use crate::moves::{Move, MoveId};
 use crate::pokemon::Pokemon;
 use crate::poketype::{Poketype, Type};
-use crate::selvec::SelVec;
+use crate::selvec::PointerVec;
 use crate::stat::{Stat, StatId};
 use crate::trigger::Ability;
 use crate::trigger::Item;
@@ -46,7 +46,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(404, 0, 404).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::IronHead),
                     Move::from(MoveId::BodySlam),
                     Move::from(MoveId::Firepunch),
@@ -67,7 +67,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(383, 0, 383).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::Thunderbolt),
                     Move::from(MoveId::Roost),
                     Move::from(MoveId::Hpice),
@@ -88,7 +88,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(261, 0, 261).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::Hydropump),
                     Move::from(MoveId::Thunderwave),
                     Move::from(MoveId::Icebeam),
@@ -109,7 +109,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(261, 0, 261).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::Stealthrock),
                     Move::from(MoveId::Fireblast),
                     Move::from(MoveId::Earthpower),
@@ -130,7 +130,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(341, 0, 341).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::Crunch),
                     Move::from(MoveId::Pursuit),
                     Move::from(MoveId::Superpower),
@@ -151,7 +151,7 @@ impl From<PokeId> for Pokemon {
                 hp: BoundedI32::new(280, 0, 280).unwrap(),
                 id: value,
                 item: Some(Item::Leftovers),
-                moves: SelVec::from(vec![
+                moves: PointerVec::from(vec![
                     Move::from(MoveId::Spore),
                     Move::from(MoveId::Superpower),
                     Move::from(MoveId::Seedbomb),
