@@ -7,15 +7,13 @@ use crate::{
 };
 
 #[derive(Debug, Default)]
-pub struct SelVec<T> {
-    active: Option<usize>,
-    data: Vec<T>,
+pub struct PointerVec<T> {
+    pub active: Option<usize>,
+    pub data: Vec<T>,
     pub dead: usize,
-    pub lock: bool,
-    selection: usize,
 }
 
-impl<T> From<Vec<T>> for SelVec<T>
+impl<T> From<Vec<T>> for PointerVec<T>
 where
     T: Default,
 {
@@ -28,7 +26,7 @@ where
     }
 }
 
-impl<T> Index<usize> for SelVec<T> {
+impl<T> Index<usize> for PointerVec<T> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
@@ -36,15 +34,15 @@ impl<T> Index<usize> for SelVec<T> {
     }
 }
 
-impl<T> IndexMut<usize> for SelVec<T> {
+impl<T> IndexMut<usize> for PointerVec<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.data[index]
     }
 }
 
-impl<T> SelVec<T> {
+impl<T> PointerVec<T> {
     pub fn kill(&mut self) -> EmptyResult {
-        self.data.swap(self.selection, self.dead - 1);
+        self.data.swap(self.active.unwrap(), self.dead - 1);
         self.dead -= 1;
         self.active = None;
         Ok(())
@@ -55,24 +53,3 @@ impl<T> SelVec<T> {
         Ok(())
     }
 }
-
-impl SelVec<Move> {
-    pub fn activate(&mut self, item: Item, ability: Ability) -> Result<(), &'static str> {
-        if self.lock && self.selection != self.active.expect("Locked without active move") {
-            return Err("Locked into different move");
-        }
-
-        if self.selection < self.dead {
-            self.active = Some(self.selection);
-            self.data[self.selection].pp -= if ability == Ability::Pressure { 2 } else { 1 };
-            self.lock = item.is_choice();
-            Ok(())
-        } else {
-            Err("Selected move has no pp")
-        }
-    }
-}
-
-// impl SelVec<Pokemon> {
-//     pub fn activate(&mut self, )
-// }
