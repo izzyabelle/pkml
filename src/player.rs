@@ -1,3 +1,7 @@
+use std::fmt::Display;
+use std::ops::{Index, IndexMut};
+
+use crate::bounded_i32::BoundedI32;
 use crate::game::HazardId;
 use crate::pokemon::Pokemon;
 use crate::preset::PokeId;
@@ -7,8 +11,58 @@ use crate::selvec::PointerVec;
 pub struct Player {
     pub name: &'static str,
     pub ai: bool,
-    pub hazards: Vec<HazardId>,
+    pub hazards: HazardBlock,
     pub roster: PointerVec<Pokemon>,
+}
+
+#[derive(Debug)]
+pub struct HazardBlock {
+    stealth_rock: BoundedI32,
+    toxic_spikes: BoundedI32,
+    spikes: BoundedI32,
+}
+
+impl Default for HazardBlock {
+    fn default() -> Self {
+        Self {
+            stealth_rock: BoundedI32 {
+                data: 0,
+                min: 0,
+                max: 1,
+            },
+            toxic_spikes: BoundedI32 {
+                data: 0,
+                min: 0,
+                max: 2,
+            },
+            spikes: BoundedI32 {
+                data: 0,
+                min: 0,
+                max: 3,
+            },
+        }
+    }
+}
+
+impl Index<HazardId> for HazardBlock {
+    type Output = BoundedI32;
+    fn index(&self, index: HazardId) -> &Self::Output {
+        match index {
+            HazardId::Stealthrock => &self.stealth_rock,
+            HazardId::Spikes => &self.spikes,
+            HazardId::ToxicSpikes => &self.toxic_spikes,
+        }
+    }
+}
+
+impl IndexMut<HazardId> for HazardBlock {
+    fn index_mut(&mut self, index: HazardId) -> &mut Self::Output {
+        match index {
+            HazardId::Stealthrock => &mut self.stealth_rock,
+            HazardId::Spikes => &mut self.spikes,
+            HazardId::ToxicSpikes => &mut self.toxic_spikes,
+        }
+    }
 }
 
 impl Player {
@@ -16,7 +70,7 @@ impl Player {
         Self {
             name: "test",
             ai,
-            hazards: Vec::new(),
+            hazards: HazardBlock::default(),
             roster: PointerVec::from(vec![
                 Pokemon::from(PokeId::Jirachi),
                 Pokemon::from(PokeId::Tyranitar),
@@ -26,5 +80,11 @@ impl Player {
                 Pokemon::from(PokeId::Starmie),
             ]),
         }
+    }
+}
+
+impl Display for Player {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", String::from(if self.ai { "Human" } else { "Bot" }))
     }
 }

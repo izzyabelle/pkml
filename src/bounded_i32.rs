@@ -1,4 +1,7 @@
-use std::ops::{Add, AddAssign, Sub, SubAssign};
+use std::{
+    fmt::Display,
+    ops::{Add, AddAssign, Sub, SubAssign},
+};
 
 #[derive(Debug, Copy, Clone, Default)]
 pub struct BoundedI32 {
@@ -26,6 +29,16 @@ impl BoundedI32 {
         } else {
             Ok(Self { data, min, max })
         }
+    }
+
+    pub fn is_max(&self) -> bool {
+        self.data == self.max
+    }
+}
+
+impl Display for BoundedI32 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.data)
     }
 }
 

@@ -21,8 +21,17 @@ use crate::{app::App, selvec::PointerVec};
 pub struct Ui {
     pub pokelist: [ListState; 2],
     pub movelist: [ListState; 2],
-    pub log: ListState,
-    pub horizontal: usize,
+    pub mode: IMode,
+    pub log_idx: usize,
+}
+
+#[derive(Debug, Default)]
+pub enum IMode {
+    #[default]
+    PokeList,
+    MoveList,
+    AI,
+    AIMoveList,
 }
 
 impl App {
@@ -48,6 +57,8 @@ impl App {
         ])
         .areas(main_bar);
 
+        let [log, gameinfo] =
+            Layout::vertical([Constraint::Fill(1), Constraint::Length(6)]).areas(middle);
         let pklist: [[Rect; 2]; 2] = [
             Layout::vertical([Constraint::Length(8), Constraint::Fill(1)]).areas(pklist_1),
             Layout::vertical([Constraint::Length(8), Constraint::Fill(1)]).areas(pklist_2),
@@ -59,6 +70,7 @@ impl App {
 
         self.render_pokelists(pklist, frame);
         self.render_movelists(mvlist, frame);
+        self.render_log(log, frame);
     }
 
     fn render_pokelists(&mut self, areas: [[Rect; 2]; 2], frame: &mut Frame) {
@@ -174,5 +186,31 @@ impl App {
                 area[1],
             )
         }
+    }
+
+    fn render_log(&mut self, area: Rect, frame: &mut Frame) {
+        let mut log = String::new();
+        if self.games.log[0].len() > 22 + self.ui.log_idx {
+            for i in 0..22 {
+                log.push_str(&format!("{}\n", self.games.log[0][i + self.ui.log_idx]));
+            }
+        } else {
+            for ele in &self.games.log[0][self.ui.log_idx..] {
+                log.push_str(&format!("{}\n", ele));
+            }
+            for i in 0..22 - self.games.log[0][self.ui.log_idx..].len() {
+                log.push_str(&String::from("\n"))
+            }
+        }
+
+        let block = Block::new()
+            .title(Line::raw("Log").centered())
+            .borders(Borders::ALL)
+            .border_type(BorderType::Plain);
+
+        frame.render_widget(
+            Paragraph::new(log).block(block).fg(Color::White).centered(),
+            area,
+        )
     }
 }

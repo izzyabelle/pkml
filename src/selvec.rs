@@ -41,7 +41,23 @@ impl<T> IndexMut<usize> for PointerVec<T> {
 }
 
 impl<T> PointerVec<T> {
-    pub fn kill(&mut self) -> EmptyResult {
+    pub fn active(&self) -> Option<&T> {
+        if let Some(data) = self.active {
+            Some(&self[data])
+        } else {
+            None
+        }
+    }
+
+    pub fn active_mut(&mut self) -> Option<&mut T> {
+        if let Some(data) = self.active {
+            Some(&mut self[data])
+        } else {
+            None
+        }
+    }
+
+    pub fn kill(&mut self) {
         self.data.swap(self.active.unwrap(), self.dead - 1);
         self.dead -= 1;
         self.active = None;

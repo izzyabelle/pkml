@@ -29,6 +29,15 @@ impl Display for Poketype {
     }
 }
 
+impl Poketype {
+    pub fn contains(&self, value: Type) -> bool {
+        match self {
+            Poketype::Mono(data) => value == *data,
+            Poketype::Dual(data) => (value == data[0]) | (value == data[1]),
+        }
+    }
+}
+
 #[derive(Debug, Default, PartialEq, Eq, Copy, Clone)]
 pub enum Type {
     #[default]
