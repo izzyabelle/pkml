@@ -1,4 +1,6 @@
-use crate::{player::Player, selvec::PointerVec};
+use std::{default, fmt::Display};
+
+use crate::{effect::PlayerId, player::Player, pokemon::Pokemon, selvec::PointerVec};
 
 pub enum GameResult {
     Winner(usize),
@@ -12,15 +14,21 @@ pub enum HazardId {
     ToxicSpikes,
 }
 
-impl HazardId {
-    pub fn to_string(&self) -> String {
-        match self {
-            HazardId::Stealthrock => String::from("stealth rock"),
-            HazardId::Spikes => String::from("spikes"),
-            HazardId::ToxicSpikes => String::from("toxic spikes"),
-        }
+impl Display for HazardId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                HazardId::Stealthrock => String::from("Stealth Rock"),
+                HazardId::Spikes => String::from("Spikes"),
+                HazardId::ToxicSpikes => String::from("Toxic Spikes"),
+            }
+        )
     }
+}
 
+impl HazardId {
     pub fn max_layers(&self) -> u8 {
         match self {
             HazardId::Stealthrock => 1u8,
@@ -30,8 +38,9 @@ impl HazardId {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Default)]
 pub enum WeatherId {
+    #[default]
     Sand,
     Rain,
     Hail,
@@ -42,7 +51,12 @@ pub struct Game {
     pub players: PointerVec<Player>,
     pub turn_count: i32,
     pub weather: Option<WeatherId>,
-    pub log: Vec<String>,
+    pub log: Vec<Vec<String>>,
+}
+
+pub enum MoveSelection {
+    Switch(usize),
+    Move(usize),
 }
 
 impl Game {
@@ -51,7 +65,59 @@ impl Game {
             players: PointerVec::from(vec![Player::new(false), Player::new(true)]),
             turn_count: 0,
             weather: None,
-            log: vec![String::new()],
+            log: vec![vec![]],
         }
     }
+
+    pub fn log(&mut self, message: String) {
+        self.log.last_mut().unwrap().push(message);
+    }
+
+    pub fn player(&self, target: &PlayerId) -> Option<&Player> {
+        match target {
+            PlayerId::Player1 => Some(&self.players[0]),
+            PlayerId::Player2 => Some(&self.players[1]),
+            PlayerId::Active => self.players.active(),
+            PlayerId::Inactive => {
+                if let Some(data) = self.players.active {
+                    Some(&self.players[(data + 1) % 2])
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn player_mut(&mut self, target: &PlayerId) -> Option<&mut Player> {
+        match target {
+            PlayerId::Player1 => Some(&mut self.players[0]),
+            PlayerId::Player2 => Some(&mut self.players[1]),
+            PlayerId::Active => self.players.active_mut(),
+            PlayerId::Inactive => {
+                if let Some(data) = self.players.active {
+                    Some(&mut self.players[(data + 1) % 2])
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn active(&self, target: &PlayerId) -> Option<&Pokemon> {
+        if let Some(player) = self.player(target) {
+            player.roster.active()
+        } else {
+            None
+        }
+    }
+
+    pub fn active_mut(&mut self, target: &PlayerId) -> Option<&mut Pokemon> {
+        if let Some(player) = self.player_mut(target) {
+            player.roster.active_mut()
+        } else {
+            None
+        }
+    }
+
+    // pub fn execute_turn(&mut self, )
 }

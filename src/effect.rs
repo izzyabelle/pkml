@@ -1,11 +1,15 @@
+use std::fmt::{Debug, Formatter};
+
 use crate::bounded_i32::BoundedI32;
-use crate::game::{HazardId, WeatherId};
+use crate::game::{Game, HazardId, WeatherId};
+use crate::player::HazardBlock;
 use crate::stat::StatId;
 use crate::status::Status;
 use crate::EmptyResult;
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Default)]
 pub enum PlayerId {
+    #[default]
     Player1,
     Player2,
     Active,
@@ -33,18 +37,16 @@ pub enum Damage {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum Effect {
-    AlterStat(PlayerId, StatId, i8),
+    AlterStat(PlayerId, StatId, i32),
     ClearHazard(PlayerId),
     Cure(PlayerId),
     Damage(PlayerId, Damage),
-    Heal(PlayerId),
+    Heal(PlayerId, i32),
     InflictHazard(PlayerId, HazardId),
     InflictStatus(PlayerId, Status),
     MidSwitch(PlayerId),
-    MissTurn(PlayerId),
     OHKO(PlayerId),
     SetWeather(WeatherId),
-    Switch(PlayerId, usize),
 }
 
 impl Damage {
@@ -56,186 +58,184 @@ impl Damage {
     }
 }
 
-/*
 impl Game {
-    fn apply_effects(&mut self, effects: Vec<Effect>) -> EmptyResult {
+    fn apply_effects(&mut self, effects: Vec<Effect>) {
         for effect in effects {
             match effect {
                 Effect::InflictStatus(target, status) => {
-                    if self.active_mut(&target).add_status(&mut status) {
-                        self.log
-                            .last_mut()
-                            .expect("write to empty log")
-                            .push_str(&format!(
-                                "{}'s {} was {}",
-                                self.player(&target).name(),
-                                self.active(&target).name(),
-                                status.to_string(),
-                            ));
+                    if let Some(mon) = self.active_mut(&target) {
+                        mon.add_status(status);
+                        let mon_name = format!("{}", mon.id);
+                        self.log(format!(
+                            "{}'s {} was {}",
+                            self.player(&target).unwrap(),
+                            mon_name,
+                            status
+                        ));
                     }
                 }
 
                 Effect::AlterStat(target, stat, stat_mod) => {
-                    let mod_str = if stat_mod > 0 { "raised" } else { "lowered" };
-                    if self.active_mut(&target).stats[stat.index()].alter(stat_mod) {
-                        self.log
-                            .last_mut()
-                            .expect("attempted to write to empty game log vec")
-                            .push_str(&format!(
-                                "{}'s {} had its {} {}",
-                                self.player(&target).name(),
-                                self.active(&target).name(),
-                                stat.to_string(),
+                    if let Some(target_mon) = self.active_mut(&target) {
+                        let mod_str = if stat_mod > 0 { "raised" } else { "lowered" };
+                        if target_mon.stats[stat].alter(stat_mod) {
+                            let mon_name = format!("{}", target_mon.id);
+                            self.log(format!(
+                                "{}'s {} {} was {}",
+                                self.player(&target).unwrap(),
+                                mon_name,
+                                stat,
                                 mod_str,
                             ));
+                        }
                     }
                 }
                 Effect::InflictHazard(target, hazard) => {
-                    self.player_mut(&target).inc_hazard(hazard).unwrap();
+                    let target_player = if let Some(data) = self.player_mut(&target) {
+                        data
+                    } else {
+                        continue;
+                    };
 
-                    self.log
-                        .last_mut()
-                        .expect("attempted to write to empty game log vec")
-                        .push_str(&format!(
-                            "{} was placed on {}'s field",
-                            hazard.to_string(),
-                            self.player(&target).name(),
-                        ));
+                    if target_player.hazards[hazard].is_max() {
+                        continue;
+                    }
+
+                    target_player.hazards[hazard] += 1;
+
+                    let (player_name, hazard_name) = (
+                        format!("{}", target_player),
+                        format!("{}", target_player.hazards[hazard]),
+                    );
+
+                    self.log(format!(
+                        "{} was placed on {}'s field",
+                        hazard_name, player_name,
+                    ));
                 }
                 Effect::ClearHazard(target) => {
-                    self.player_mut(&target).clear_hazards().unwrap();
+                    let target_player = if let Some(data) = self.player_mut(&target) {
+                        data
+                    } else {
+                        continue;
+                    };
+                    target_player.hazards = HazardBlock::default();
+                    let player_name = format!("{}", target_player);
 
-                    self.log
-                        .last_mut()
-                        .expect("attempted to write to empty game log vec")
-                        .push_str(&format!(
-                            "hazards were cleared from {}'s field",
-                            self.player(&target).name(),
-                        ));
+                    self.log(format!("hazards were cleared from {}'s field", player_name));
                 }
                 Effect::Damage(target, damage) => {
-                    let result = self.active_mut(&target).hp.damage(damage);
-                    let dam_str = if result.0 > 0 { "gained" } else { "lost" };
-                    if result.0 != 0 {
-                        self.log
-                            .last_mut()
-                            .expect("attempted to write to empty game log vec")
-                            .push_str(&format!(
-                                "{}'s {} {} {} hp{}",
-                                self.player(&target).name(),
-                                self.active(&target).name(),
-                                dam_str,
-                                self.active(&target).hp.percent(&result.0.abs()),
-                                if result.1 == 0 {
-                                    self.player_mut(&&target).remaining_mons -= 1;
-                                    ", it died"
-                                } else {
-                                    ""
-                                }
-                            ));
+                    let rem_hp;
+                    if let Some(target_mon) = self.active_mut(&target) {
+                        let prev = target_mon.hp.data;
+                        target_mon.hp.data -= damage.collapse(target_mon.hp);
+                        let diff = prev - target_mon.hp.data;
+                        let mon_name = format!("{}", target_mon.id);
+                        rem_hp = target_mon.hp.data;
+
+                        self.log(format!(
+                            "{}'s {} lost {} hp",
+                            self.player(&target).unwrap(),
+                            mon_name,
+                            diff,
+                        ));
+                    } else {
+                        continue;
+                    }
+
+                    if rem_hp == 0 {
+                        self.player_mut(&target).unwrap().roster.kill();
+                        self.log(String::from("They fainted"));
                     }
                 }
+
                 Effect::Cure(target) => {
-                    if self.active_mut(&target).refresh_status() {
-                        self.log
-                            .last_mut()
-                            .expect("attempted to write to empty game log vec")
-                            .push_str(&format!(
-                                "{}'s {} was cured of status",
-                                self.player(&target).name(),
-                                self.active(&target).name(),
-                            ));
+                    if let Some(target_mon) = self.active_mut(&target) {
+                        for status in &vec![Status::Burn, Status::Paralyse, Status::Toxic] {
+                            target_mon.status.remove(status);
+                        }
+                        let mon_name = format!("{}", target_mon.id);
+
+                        self.log(format!(
+                            "{}'s {} was cured of status",
+                            self.player(&target).unwrap(),
+                            mon_name,
+                        ));
                     }
                 }
-                Effect::Heal(target) => {
-                    let result = self
-                        .active_mut(&target)
-                        .hp
-                        .damage(Damage::Fractional(-1, 2));
+                Effect::Heal(target, frac) => {
+                    if let Some(target_mon) = self.active_mut(&target) {
+                        if target_mon.hp.data == 0 {
+                            continue;
+                        }
+                        let prev = target_mon.hp.data;
+                        target_mon.hp += target_mon.hp.max / frac;
+                        let diff = target_mon.hp - prev;
+                        let mon_name = format!("{}", target_mon.id);
 
-                    self.log
-                        .last_mut()
-                        .expect("attempted to write to empty game log vec")
-                        .push_str(&format!(
+                        self.log(format!(
                             "{}'s {} gained {} hp",
-                            self.player(&target).name(),
-                            self.active(&target).name(),
-                            self.active(&target).hp.percent(&result.0),
+                            self.player(&target).unwrap(),
+                            mon_name,
+                            diff,
                         ));
-                }
-                Effect::Switch(target, target_mon) => {
-                    self.player_mut(&target).release_lock();
-                    self.active_mut(&target).reset_nv();
-
-                    self.player_mut(&target)
-                        .set_active_index(target_mon)
-                        .unwrap();
-
-                    self.log
-                        .last_mut()
-                        .expect("attempted to write to empty game log vec")
-                        .push_str(&format!(
-                            "{} switched to {}",
-                            self.player(&target).name(),
-                            self.active(&target).name(),
-                        ));
+                    }
                 }
                 Effect::OHKO(target) => {
-                    if self.active_mut(&target).faint() {
-                        self.log
-                            .last_mut()
-                            .expect("attempted to write to empty game log vec")
-                            .push_str(&format!("{} fainted!", self.active(&target).name()));
-                        self.player_mut(&target).remaining_mons -= 1;
+                    let mon_name;
+                    if let Some(target_mon) = self.active_mut(&target) {
+                        target_mon.hp.data = 0;
+                        mon_name = format!("{}", target_mon.id);
+                    } else {
+                        continue;
                     }
-                }
-                Effect::MissTurn(target) => {
-                    if self.active_mut(&target).miss_turn() {
-                        self.log
-                            .last_mut()
-                            .expect("attempted to write to empty game log vec")
-                            .push_str(&format!(
-                                "{}'s {} missed its turn",
-                                self.player(&target).name(),
-                                self.active(&target).name(),
-                            ));
-                    }
+                    self.player_mut(&target).unwrap().roster.kill();
+
+                    self.log(format!(
+                        "{}'s {} fainted!",
+                        self.player(&target).unwrap(),
+                        mon_name
+                    ));
                 }
                 Effect::MidSwitch(target) => {
-                    if self.player(&target).remaining_mons == 1 {
+                    let target_player = if let Some(data) = self.player_mut(&target) {
+                        data
+                    } else {
+                        continue;
+                    };
+                    if target_player.roster.dead == 1 {
                         continue;
                     }
                     // self.get_input().unwrap();
                     // let effects_ = self.process_move();
-                    self.apply_effects(effects).unwrap();
+                    // self.apply_effects(effects).unwrap();
                 }
                 Effect::SetWeather(weather) => {
-                    if self.set_weather(weather) {
+                    if self.weather != Some(weather) {
+                        self.weather = Some(weather);
                         match weather {
                             WeatherId::Sand => {
                                 self.log
                                     .last_mut()
                                     .expect("attempted to write to empty game log vec")
-                                    .push_str(&format!("A sandstorm kicked up!"));
+                                    .push(format!("A sandstorm kicked up!"));
                             }
                             WeatherId::Hail => {
                                 self.log
                                     .last_mut()
                                     .expect("attempted to write to empty game log vec")
-                                    .push_str(&format!("Hail starts"));
+                                    .push(format!("Hail starts"));
                             }
                             WeatherId::Rain => {
                                 self.log
                                     .last_mut()
                                     .expect("attempted to write to empty game log vec")
-                                    .push_str(&format!("Rain starts"));
+                                    .push(format!("Rain starts"));
                             }
                         }
                     }
                 }
             }
         }
-        Ok(())
     }
 }
-*/

@@ -22,7 +22,27 @@ pub struct Move {
 
 impl Display for Move {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.id)
+        write!(
+            f,
+            "{}\n\
+            Type: {}\n\
+            PP: {} / {}\n\
+            {}{}",
+            self.damage_type,
+            self.poke_type,
+            self.pp,
+            self.pp.max,
+            if let Some(data) = self.base_power {
+                format!("BP: {}\n", data)
+            } else {
+                String::new()
+            },
+            if let Some(data) = self.accuracy {
+                format!("Accuracy: {}%\n", (data * 100f32) as i32)
+            } else {
+                String::new()
+            },
+        )
     }
 }
 
@@ -160,21 +180,51 @@ impl From<MoveId> for Move {
                 ..Default::default()
             },
             MoveId::Explosion => Self {
+                id,
+                base_power: Some(500),
+                effects: vec![Effect::OHKO(PlayerId::Active)],
                 ..Default::default()
             },
             MoveId::Crunch => Self {
+                id,
+                base_power: Some(80),
+                poke_type: Type::Dark,
+                effects: vec![Effect::AlterStat(PlayerId::Inactive, StatId::Def, -1)],
                 ..Default::default()
             },
             MoveId::Pursuit => Self {
+                id,
+                base_power: Some(40),
+                poke_type: Type::Dark,
                 ..Default::default()
             },
             MoveId::Superpower => Self {
+                id,
+                base_power: Some(120),
+                poke_type: Type::Fighting,
+                effects: vec![
+                    Effect::AlterStat(PlayerId::Active, StatId::Atk, -1),
+                    Effect::AlterStat(PlayerId::Active, StatId::Def, -1),
+                ],
+
                 ..Default::default()
             },
             MoveId::Stoneedge => Self {
+                id,
+                base_power: Some(120),
+                poke_type: Type::Rock,
+                pp: BoundedI32 {
+                    data: 8,
+                    min: 0,
+                    max: 8,
+                },
                 ..Default::default()
             },
             MoveId::Spore => Self {
+                id,
+                damage_type: Mtype::Status,
+                poke_type: Type::Grass,
+                effects: vec![Effect::InflictStatus(PlayerId::Inactive, Status::Sleep)],
                 ..Default::default()
             },
             MoveId::Seedbomb => Self {
@@ -196,16 +246,6 @@ impl From<MoveId> for Move {
 impl Default for Move {
     fn default() -> Self {
         Self::from(MoveId::default())
-    }
-}
-
-impl From<MoveId> for PlayerId {
-    fn from(value: MoveId) -> Self {
-        match value {
-            MoveId::Roost => Self::Active,
-            MoveId::Refresh => Self::Active,
-            _ => Self::Inactive,
-        }
     }
 }
 
@@ -279,6 +319,20 @@ impl Display for MoveId {
                 MoveId::Machpunch => String::from("Mach Punch"),
                 MoveId::Struggle => String::from("Struggle"),
                 MoveId::Switch(_) => String::from("Switch"),
+            }
+        )
+    }
+}
+
+impl Display for Mtype {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Move Type: {}",
+            match self {
+                Mtype::Physical => String::from("Physical"),
+                Mtype::Special => String::from("Special"),
+                Mtype::Status => String::from("Status"),
             }
         )
     }
