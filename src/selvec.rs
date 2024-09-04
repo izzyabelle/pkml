@@ -21,6 +21,7 @@ where
         Self {
             dead: value.len(),
             data: value,
+            active: Some(0),
             ..Default::default()
         }
     }
@@ -61,11 +62,14 @@ impl<T> PointerVec<T> {
         self.data.swap(self.active.unwrap(), self.dead - 1);
         self.dead -= 1;
         self.active = None;
-        Ok(())
     }
 
     pub fn deactivate(&mut self) -> EmptyResult {
         self.active = None;
         Ok(())
+    }
+
+    pub fn living(&self) -> &[T] {
+        &self.data[..self.dead]
     }
 }

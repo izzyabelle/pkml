@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::ops::{Index, IndexMut};
 
 use crate::bounded_i32::BoundedI32;
-use crate::game::WeatherId;
+use crate::game::{MoveSelection, WeatherId};
 use crate::moves::Move;
 use crate::poketype::Poketype;
 use crate::preset::PokeId;
@@ -25,13 +25,26 @@ pub struct Pokemon {
 }
 
 #[derive(Debug, Default, Copy, Clone)]
-struct StatBlock {
+pub struct StatBlock {
     atk: Stat,
     def: Stat,
     spa: Stat,
     spd: Stat,
     spe: Stat,
     weather: WeatherId,
+}
+
+impl StatBlock {
+    pub fn new(values: [i32; 5], poketype: Poketype, item: Option<Item>) -> Self {
+        Self {
+            atk: Stat::new(values[0], StatId::Atk, poketype, item),
+            def: Stat::new(values[1], StatId::Def, poketype, item),
+            spa: Stat::new(values[2], StatId::Spa, poketype, item),
+            spd: Stat::new(values[3], StatId::Spd, poketype, item),
+            spe: Stat::new(values[4], StatId::Spe, poketype, item),
+            ..Default::default()
+        }
+    }
 }
 
 impl Index<StatId> for StatBlock {
@@ -97,6 +110,13 @@ impl Pokemon {
         } else {
             self.status.insert(status, 1);
             true
+        }
+    }
+
+    pub fn get_move(&self, move_: &MoveSelection) -> Option<&Move> {
+        match move_ {
+            MoveSelection::Switch(_) => None,
+            MoveSelection::Move(idx) => Some(&self.moves[*idx]),
         }
     }
 }

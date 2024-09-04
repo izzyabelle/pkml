@@ -110,7 +110,7 @@ impl From<MoveId> for Move {
                 pp: BoundedI32::new(16, 0, 16).unwrap(),
                 damage_type: Mtype::Status,
                 poke_type: Type::Flying,
-                effects: vec![Effect::Heal(PlayerId::Active)],
+                effects: vec![Effect::Heal(PlayerId::Active, 2)],
                 ..Default::default()
             },
             MoveId::Hpice => Self {
