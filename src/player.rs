@@ -2,7 +2,7 @@ use std::fmt::Display;
 use std::ops::{Index, IndexMut};
 
 use crate::bounded_i32::BoundedI32;
-use crate::game::HazardId;
+use crate::game::{HazardId, MoveSelection};
 use crate::pokemon::Pokemon;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
@@ -13,13 +13,14 @@ pub struct Player {
     pub ai: bool,
     pub hazards: HazardBlock,
     pub roster: PointerVec<Pokemon>,
+    pub inputs: Vec<MoveSelection>,
 }
 
 #[derive(Debug)]
 pub struct HazardBlock {
-    stealth_rock: BoundedI32,
-    toxic_spikes: BoundedI32,
-    spikes: BoundedI32,
+    pub stealth_rock: BoundedI32,
+    pub toxic_spikes: BoundedI32,
+    pub spikes: BoundedI32,
 }
 
 impl Default for HazardBlock {
@@ -79,12 +80,13 @@ impl Player {
                 Pokemon::from(PokeId::Zapdos),
                 Pokemon::from(PokeId::Starmie),
             ]),
+            inputs: Vec::new(),
         }
     }
 }
 
 impl Display for Player {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", String::from(if self.ai { "Human" } else { "Bot" }))
+        write!(f, "{}", String::from(if self.ai { "Bot" } else { "Human" }))
     }
 }

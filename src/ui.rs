@@ -71,6 +71,7 @@ impl App {
         self.render_pokelists(pklist, frame);
         self.render_movelists(mvlist, frame);
         self.render_log(log, frame);
+        self.render_gameinfo(gameinfo, frame);
     }
 
     fn render_pokelists(&mut self, areas: [[Rect; 2]; 2], frame: &mut Frame) {
@@ -88,9 +89,9 @@ impl App {
                 .map(|(k, pokemon)| match self.games.players[i].roster.active {
                     Some(active) => {
                         if active == k {
-                            ListItem::from(format!("{}", pokemon.id))
+                            ListItem::from(format!("{}", pokemon.id)).fg(Color::Magenta)
                         } else {
-                            ListItem::from(format!("{}", pokemon.id).bg(Color::Magenta))
+                            ListItem::from(format!("{}", pokemon.id))
                         }
                     }
                     None => ListItem::from(format!("{}", pokemon.id)),
@@ -126,6 +127,21 @@ impl App {
         }
     }
 
+    fn render_gameinfo(&mut self, area: Rect, frame: &mut Frame) {
+        let block = Block::new()
+            .title(Line::raw("Game Info"))
+            .borders(Borders::ALL)
+            .border_type(BorderType::Plain);
+
+        frame.render_widget(
+            Paragraph::new(format!("{}", self.games.state))
+                .block(block)
+                .fg(Color::White)
+                .centered(),
+            area,
+        )
+    }
+
     fn render_movelists(&mut self, areas: [[Rect; 2]; 2], frame: &mut Frame) {
         for (i, area) in areas.iter().enumerate() {
             let block = Block::new()
@@ -143,9 +159,9 @@ impl App {
                         |(k, move_)| match self.games.players[i].roster[selection].moves.active {
                             Some(active) => {
                                 if active == k {
-                                    ListItem::from(format!("{}", move_.id))
+                                    ListItem::from(format!("{}", move_.id)).fg(Color::Magenta)
                                 } else {
-                                    ListItem::from(format!("{}", move_.id).bg(Color::Magenta))
+                                    ListItem::from(format!("{}", move_.id))
                                 }
                             }
                             None => ListItem::from(format!("{}", move_.id)),
@@ -189,17 +205,19 @@ impl App {
     }
 
     fn render_log(&mut self, area: Rect, frame: &mut Frame) {
-        let mut log = String::new();
-        if self.games.log[0].len() > 22 + self.ui.log_idx {
+        let mut disp_log = String::new();
+        let log = self.games.log.last().unwrap();
+
+        if log.len() > 22 + self.ui.log_idx {
             for i in 0..22 {
-                log.push_str(&format!("{}\n", self.games.log[0][i + self.ui.log_idx]));
+                disp_log.push_str(&format!("{}\n", log[i + self.ui.log_idx]));
             }
         } else {
-            for ele in &self.games.log[0][self.ui.log_idx..] {
-                log.push_str(&format!("{}\n", ele));
+            for ele in log[self.ui.log_idx..].iter() {
+                disp_log.push_str(&format!("{}\n", ele));
             }
-            for i in 0..22 - self.games.log[0][self.ui.log_idx..].len() {
-                log.push_str(&String::from("\n"))
+            for i in 0..22 - log[self.ui.log_idx..].len() {
+                disp_log.push_str(&String::from("\n"))
             }
         }
 
@@ -209,7 +227,11 @@ impl App {
             .border_type(BorderType::Plain);
 
         frame.render_widget(
-            Paragraph::new(log).block(block).fg(Color::White).centered(),
+            Paragraph::new(disp_log)
+                .block(block)
+                .fg(Color::White)
+                .wrap(Wrap { trim: false })
+                .centered(),
             area,
         )
     }

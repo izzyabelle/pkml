@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::bounded_i32::BoundedI32;
 use crate::moves::{Move, MoveId};
-use crate::pokemon::Pokemon;
+use crate::pokemon::{Pokemon, StatBlock};
 use crate::poketype::{Poketype, Type};
 use crate::selvec::PointerVec;
 use crate::stat::{Stat, StatId};
@@ -53,13 +53,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Refresh),
                 ]),
                 poketype: Poketype::Dual([Type::Steel, Type::Psychic]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(249)),
-                    (StatId::Def, Stat::from(236)),
-                    (StatId::Spa, Stat::from(212)),
-                    (StatId::Spd, Stat::from(286)),
-                    (StatId::Spe, Stat::from(263)),
-                ]),
+                stats: StatBlock::new(
+                    [249, 236, 212, 286, 263],
+                    Poketype::Dual([Type::Steel, Type::Psychic]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
             PokeId::Zapdos => Self {
@@ -74,13 +72,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Uturn),
                 ]),
                 poketype: Poketype::Dual([Type::Electric, Type::Flying]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(193)),
-                    (StatId::Def, Stat::from(288)),
-                    (StatId::Spa, Stat::from(286)),
-                    (StatId::Spd, Stat::from(216)),
-                    (StatId::Spe, Stat::from(244)),
-                ]),
+                stats: StatBlock::new(
+                    [193, 288, 286, 216, 244],
+                    Poketype::Dual([Type::Electric, Type::Flying]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
             PokeId::Starmie => Self {
@@ -95,13 +91,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Rapidspin),
                 ]),
                 poketype: Poketype::Dual([Type::Water, Type::Psychic]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(139)),
-                    (StatId::Def, Stat::from(207)),
-                    (StatId::Spa, Stat::from(299)),
-                    (StatId::Spd, Stat::from(206)),
-                    (StatId::Spe, Stat::from(361)),
-                ]),
+                stats: StatBlock::new(
+                    [139, 207, 299, 206, 361],
+                    Poketype::Dual([Type::Water, Type::Psychic]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
             PokeId::Heatran => Self {
@@ -116,13 +110,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Explosion),
                 ]),
                 poketype: Poketype::Dual([Type::Fire, Type::Steel]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(193)),
-                    (StatId::Def, Stat::from(247)),
-                    (StatId::Spa, Stat::from(326)),
-                    (StatId::Spd, Stat::from(248)),
-                    (StatId::Spe, Stat::from(253)),
-                ]),
+                stats: StatBlock::new(
+                    [193, 247, 326, 248, 253],
+                    Poketype::Dual([Type::Fire, Type::Steel]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
             PokeId::Tyranitar => Self {
@@ -137,13 +129,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Stoneedge),
                 ]),
                 poketype: Poketype::Dual([Type::Rock, Type::Dark]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(367)),
-                    (StatId::Def, Stat::from(256)),
-                    (StatId::Spa, Stat::from(206)),
-                    (StatId::Spd, Stat::from(237)),
-                    (StatId::Spe, Stat::from(243)),
-                ]),
+                stats: StatBlock::new(
+                    [367, 256, 206, 237, 243],
+                    Poketype::Dual([Type::Rock, Type::Dark]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
             PokeId::Breloom => Self {
@@ -158,13 +148,11 @@ impl From<PokeId> for Pokemon {
                     Move::from(MoveId::Machpunch),
                 ]),
                 poketype: Poketype::Dual([Type::Grass, Type::Fighting]),
-                stats: HashMap::from([
-                    (StatId::Atk, Stat::from(393)),
-                    (StatId::Def, Stat::from(196)),
-                    (StatId::Spa, Stat::from(140)),
-                    (StatId::Spd, Stat::from(156)),
-                    (StatId::Spe, Stat::from(222)),
-                ]),
+                stats: StatBlock::new(
+                    [393, 196, 140, 156, 222],
+                    Poketype::Dual([Type::Grass, Type::Fighting]),
+                    Some(Item::Leftovers),
+                ),
                 status: HashMap::new(),
             },
         }

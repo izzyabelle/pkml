@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use crate::bounded_i32::BoundedI32;
-use crate::game::{Game, HazardId, WeatherId};
+use crate::game::{Game, GameState, HazardId, WeatherId};
 use crate::player::HazardBlock;
 use crate::stat::StatId;
 use crate::status::Status;
@@ -47,6 +47,7 @@ pub enum Effect {
     MidSwitch(PlayerId),
     OHKO(PlayerId),
     SetWeather(WeatherId),
+    Switch(usize),
 }
 
 impl Damage {
@@ -59,16 +60,16 @@ impl Damage {
 }
 
 impl Game {
-    fn apply_effects(&mut self, effects: Vec<Effect>) {
+    pub fn apply_effects(&mut self, effects: Vec<Effect>) {
         for effect in effects {
             match effect {
                 Effect::InflictStatus(target, status) => {
-                    if let Some(mon) = self.active_mut(&target) {
+                    if let Some(mon) = self.player_mut(&target).roster.active_mut() {
                         mon.add_status(status);
                         let mon_name = format!("{}", mon.id);
                         self.log(format!(
                             "{}'s {} was {}",
-                            self.player(&target).unwrap(),
+                            self.player(&target),
                             mon_name,
                             status
                         ));
@@ -76,13 +77,13 @@ impl Game {
                 }
 
                 Effect::AlterStat(target, stat, stat_mod) => {
-                    if let Some(target_mon) = self.active_mut(&target) {
+                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         let mod_str = if stat_mod > 0 { "raised" } else { "lowered" };
                         if target_mon.stats[stat].alter(stat_mod) {
                             let mon_name = format!("{}", target_mon.id);
                             self.log(format!(
                                 "{}'s {} {} was {}",
-                                self.player(&target).unwrap(),
+                                self.player(&target),
                                 mon_name,
                                 stat,
                                 mod_str,
@@ -91,11 +92,7 @@ impl Game {
                     }
                 }
                 Effect::InflictHazard(target, hazard) => {
-                    let target_player = if let Some(data) = self.player_mut(&target) {
-                        data
-                    } else {
-                        continue;
-                    };
+                    let target_player = self.player_mut(&target);
 
                     if target_player.hazards[hazard].is_max() {
                         continue;
@@ -114,11 +111,7 @@ impl Game {
                     ));
                 }
                 Effect::ClearHazard(target) => {
-                    let target_player = if let Some(data) = self.player_mut(&target) {
-                        data
-                    } else {
-                        continue;
-                    };
+                    let target_player = self.player_mut(&target);
                     target_player.hazards = HazardBlock::default();
                     let player_name = format!("{}", target_player);
 
@@ -126,7 +119,7 @@ impl Game {
                 }
                 Effect::Damage(target, damage) => {
                     let rem_hp;
-                    if let Some(target_mon) = self.active_mut(&target) {
+                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         let prev = target_mon.hp.data;
                         target_mon.hp.data -= damage.collapse(target_mon.hp);
                         let diff = prev - target_mon.hp.data;
@@ -135,7 +128,7 @@ impl Game {
 
                         self.log(format!(
                             "{}'s {} lost {} hp",
-                            self.player(&target).unwrap(),
+                            self.player(&target),
                             mon_name,
                             diff,
                         ));
@@ -144,13 +137,13 @@ impl Game {
                     }
 
                     if rem_hp == 0 {
-                        self.player_mut(&target).unwrap().roster.kill();
+                        self.player_mut(&target).roster.kill();
                         self.log(String::from("They fainted"));
                     }
                 }
 
                 Effect::Cure(target) => {
-                    if let Some(target_mon) = self.active_mut(&target) {
+                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         for status in &vec![Status::Burn, Status::Paralyse, Status::Toxic] {
                             target_mon.status.remove(status);
                         }
@@ -158,13 +151,13 @@ impl Game {
 
                         self.log(format!(
                             "{}'s {} was cured of status",
-                            self.player(&target).unwrap(),
+                            self.player(&target),
                             mon_name,
                         ));
                     }
                 }
                 Effect::Heal(target, frac) => {
-                    if let Some(target_mon) = self.active_mut(&target) {
+                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         if target_mon.hp.data == 0 {
                             continue;
                         }
@@ -175,7 +168,7 @@ impl Game {
 
                         self.log(format!(
                             "{}'s {} gained {} hp",
-                            self.player(&target).unwrap(),
+                            self.player(&target),
                             mon_name,
                             diff,
                         ));
@@ -183,32 +176,28 @@ impl Game {
                 }
                 Effect::OHKO(target) => {
                     let mon_name;
-                    if let Some(target_mon) = self.active_mut(&target) {
+                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         target_mon.hp.data = 0;
                         mon_name = format!("{}", target_mon.id);
                     } else {
                         continue;
                     }
-                    self.player_mut(&target).unwrap().roster.kill();
+                    self.player_mut(&target).roster.kill();
 
-                    self.log(format!(
-                        "{}'s {} fainted!",
-                        self.player(&target).unwrap(),
-                        mon_name
-                    ));
+                    self.log(format!("{}'s {} fainted!", self.player(&target), mon_name));
                 }
                 Effect::MidSwitch(target) => {
-                    let target_player = if let Some(data) = self.player_mut(&target) {
-                        data
-                    } else {
-                        continue;
-                    };
+                    let target_player = self.player_mut(&target);
                     if target_player.roster.dead == 1 {
                         continue;
                     }
-                    // self.get_input().unwrap();
-                    // let effects_ = self.process_move();
-                    // self.apply_effects(effects).unwrap();
+                    self.prev_prev_state = self.prev_state;
+                    self.prev_state = self.state;
+                    self.state = GameState::AwaitingSwitch;
+                    self.log(format!(
+                        "{} selects a pokemon to switch to",
+                        self.player(&target)
+                    ));
                 }
                 Effect::SetWeather(weather) => {
                     if self.weather != Some(weather) {
@@ -234,6 +223,9 @@ impl Game {
                             }
                         }
                     }
+                }
+                Effect::Switch(idx) => {
+                    self.player_mut(&PlayerId::Active).roster.active = Some(idx);
                 }
             }
         }

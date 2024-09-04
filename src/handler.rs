@@ -1,5 +1,9 @@
 use crate::app::{App, AppResult};
+use crate::effect::PlayerId;
+use crate::game::MoveSelection;
 use crate::ui::IMode;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
@@ -61,6 +65,38 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                 app.ui.log_idx -= 1
             }
         }
+        KeyCode::Enter => match app.ui.mode {
+            IMode::PokeList => {
+                let _move = MoveSelection::Switch(app.ui.pokelist[0].selected().unwrap_or(7));
+                if app
+                    .games
+                    .list_valid_inputs(&PlayerId::Player1)
+                    .contains(&_move)
+                {
+                    app.games.player_mut(&PlayerId::Player1).inputs.push(_move);
+                    app.games.execute_turn();
+                }
+            }
+            IMode::MoveList => {
+                let _move = MoveSelection::Move(app.ui.movelist[0].selected().unwrap_or(7));
+                if app
+                    .games
+                    .list_valid_inputs(&PlayerId::Player1)
+                    .contains(&_move)
+                    && app.ui.pokelist[0].selected().unwrap_or(7)
+                        == app
+                            .games
+                            .player(&PlayerId::Player1)
+                            .roster
+                            .active
+                            .unwrap_or(8)
+                {
+                    app.games.player_mut(&PlayerId::Player1).inputs.push(_move);
+                    app.games.execute_turn();
+                }
+            }
+            _ => {}
+        },
         _ => {}
     }
     Ok(())
