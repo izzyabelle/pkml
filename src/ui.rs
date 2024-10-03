@@ -108,8 +108,10 @@ impl App {
 
             let info = if let Some(k) = self.ui.pokelist[i].selected() {
                 format!("{}", self.games.players[i].roster[k])
+            } else if let Some(active) = self.games.players[i].roster.active() {
+                format!("{}", active)
             } else {
-                format!("No selection")
+                "No selection".to_string()
             };
 
             let block = Block::new()
@@ -129,7 +131,7 @@ impl App {
 
     fn render_gameinfo(&mut self, area: Rect, frame: &mut Frame) {
         let block = Block::new()
-            .title(Line::raw("Game Info"))
+            .title(Line::raw("Game Info").centered())
             .borders(Borders::ALL)
             .border_type(BorderType::Plain);
 

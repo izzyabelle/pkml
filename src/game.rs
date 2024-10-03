@@ -2,6 +2,8 @@ use crate::status::Status;
 use crate::{effect::Damage, poketype::Type};
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::{default, fmt::Display};
 
 use crate::{
@@ -55,7 +57,7 @@ pub enum WeatherId {
 pub struct Game {
     pub players: PointerVec<Player>,
     pub turn_count: i32,
-    pub weather: Option<WeatherId>,
+    pub weather: Rc<RefCell<Option<WeatherId>>>,
     pub log: Vec<Vec<String>>,
     pub state: GameState,
     pub prev_state: GameState,
@@ -107,9 +109,14 @@ pub enum MoveSelection {
 
 impl Game {
     pub fn new() -> Self {
+        let weather = Rc::new(RefCell::new(None));
         Self {
-            players: PointerVec::from(vec![Player::new(false), Player::new(true)]),
+            players: PointerVec::from(vec![
+                Player::new(false, Rc::clone(&weather)),
+                Player::new(true, Rc::clone(&weather)),
+            ]),
             log: vec![vec![String::from("Players sent out their starters!")]],
+            weather,
             ..Default::default()
         }
     }
@@ -160,12 +167,13 @@ impl Game {
                 self.order_turn_by_speed();
                 for _ in 0..self.players.data.len() {
                     if let Some(active_mon) = self.player(&PlayerId::Active).roster.active() {
-                        let (sand, ice) = (
-                            (active_mon.poketype.contains(Type::Rock)
-                                | active_mon.poketype.contains(Type::Steel)),
-                            active_mon.poketype.contains(Type::Ice),
+                        let (weather, sand, ice) = (
+                            *self.weather.borrow(),
+                            (active_mon.poketype.borrow().contains(Type::Rock)
+                                | active_mon.poketype.borrow().contains(Type::Steel)),
+                            active_mon.poketype.borrow().contains(Type::Ice),
                         );
-                        match (self.weather, sand, ice) {
+                        match (weather, sand, ice) {
                             (Some(WeatherId::Sand), false, _) => {
                                 self.apply_effects(vec![Effect::Damage(
                                     PlayerId::Active,
@@ -204,9 +212,9 @@ impl Game {
                 }
             }
             GameState::AwaitingSwitch => {
-                self.apply_effects(self.calculate_effects());
                 self.state = self.prev_state;
                 self.prev_state = self.prev_prev_state;
+                self.apply_effects(self.calculate_effects());
             }
             GameState::Completed(_) => {
                 return;
@@ -272,12 +280,6 @@ impl Game {
     }
 
     fn calculate_effects(&self) -> Vec<Effect> {
-        let active_mon = if let Some(mon) = self.player(&PlayerId::Active).roster.active() {
-            mon
-        } else {
-            return Vec::new();
-        };
-
         match self.player(&PlayerId::Active).inputs.last().unwrap() {
             MoveSelection::Switch(idx) => [
                 vec![Effect::Switch(*idx)],
@@ -285,6 +287,11 @@ impl Game {
             ]
             .concat(),
             MoveSelection::Move(idx) => {
+                let active_mon = if let Some(mon) = self.player(&PlayerId::Active).roster.active() {
+                    mon
+                } else {
+                    return Vec::new();
+                };
                 let _move = &active_mon.moves[*idx];
                 let mut out = Vec::new();
                 if let (Some(bp), Some(inactive_mon)) = (
@@ -292,8 +299,8 @@ impl Game {
                     self.player(&PlayerId::Inactive).roster.active(),
                 ) {
                     let (atk, def, burn, weather, random, stab, eff) = (
-                        active_mon.stats[StatId::Atk].curr as f32,
-                        inactive_mon.stats[StatId::Def].curr as f32,
+                        active_mon.stats[StatId::Atk].curr() as f32,
+                        inactive_mon.stats[StatId::Def].curr() as f32,
                         if active_mon.status.contains_key(&Status::Burn) {
                             0.5f32
                         } else {
@@ -301,12 +308,12 @@ impl Game {
                         },
                         1.0f32,
                         thread_rng().gen_range(85..101) as f32 / 100.0,
-                        if active_mon.poketype.contains(_move.poke_type) {
+                        if active_mon.poketype.borrow().contains(_move.poke_type) {
                             1.5f32
                         } else {
                             1.0f32
                         },
-                        _move.poke_type.calc_eff(&inactive_mon.poketype),
+                        _move.poke_type.calc_eff(&inactive_mon.poketype.borrow()),
                     );
                     out.push(Effect::Damage(
                         PlayerId::Inactive,
@@ -378,8 +385,8 @@ impl Game {
 
             let (move1, move2) = (p1_mon.get_move(input1), p2_mon.get_move(input2));
 
-            let faster = (p1_mon.stats[StatId::Spe].curr > p2_mon.stats[StatId::Spe].curr)
-                | (p1_mon.stats[StatId::Spe].curr == p2_mon.stats[StatId::Spe].curr
+            let faster = (p1_mon.stats[StatId::Spe].curr() > p2_mon.stats[StatId::Spe].curr())
+                | (p1_mon.stats[StatId::Spe].curr() == p2_mon.stats[StatId::Spe].curr()
                     && thread_rng().gen::<bool>());
 
             let (priority1, priority2) = (
@@ -405,8 +412,8 @@ impl Game {
             self.player(&PlayerId::Active).roster.active(),
             self.player(&PlayerId::Inactive).roster.active(),
         ) {
-            if (p1_mon.stats[StatId::Spe].curr > p2_mon.stats[StatId::Spe].curr)
-                | ((p1_mon.stats[StatId::Spe].curr == p2_mon.stats[StatId::Spe].curr)
+            if (p1_mon.stats[StatId::Spe].curr() > p2_mon.stats[StatId::Spe].curr())
+                | ((p1_mon.stats[StatId::Spe].curr() == p2_mon.stats[StatId::Spe].curr())
                     && thread_rng().gen())
             {
                 Some(0)
