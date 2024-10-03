@@ -1,8 +1,10 @@
+use std::cell::RefCell;
 use std::fmt::Display;
 use std::ops::{Index, IndexMut};
+use std::rc::Rc;
 
 use crate::bounded_i32::BoundedI32;
-use crate::game::{HazardId, MoveSelection};
+use crate::game::{HazardId, MoveSelection, WeatherId};
 use crate::pokemon::Pokemon;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
@@ -67,18 +69,18 @@ impl IndexMut<HazardId> for HazardBlock {
 }
 
 impl Player {
-    pub fn new(ai: bool) -> Self {
+    pub fn new(ai: bool, weather: Rc<RefCell<Option<WeatherId>>>) -> Self {
         Self {
             name: "test",
             ai,
             hazards: HazardBlock::default(),
             roster: PointerVec::from(vec![
-                Pokemon::from(PokeId::Jirachi),
-                Pokemon::from(PokeId::Tyranitar),
-                Pokemon::from(PokeId::Heatran),
-                Pokemon::from(PokeId::Breloom),
-                Pokemon::from(PokeId::Zapdos),
-                Pokemon::from(PokeId::Starmie),
+                Pokemon::preset(PokeId::Jirachi, Rc::clone(&weather)),
+                Pokemon::preset(PokeId::Tyranitar, Rc::clone(&weather)),
+                Pokemon::preset(PokeId::Heatran, Rc::clone(&weather)),
+                Pokemon::preset(PokeId::Breloom, Rc::clone(&weather)),
+                Pokemon::preset(PokeId::Zapdos, Rc::clone(&weather)),
+                Pokemon::preset(PokeId::Starmie, weather),
             ]),
             inputs: Vec::new(),
         }

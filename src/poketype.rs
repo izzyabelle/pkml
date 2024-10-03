@@ -468,13 +468,13 @@ impl Type {
 
 impl Pokemon {
     pub fn has_type(&self, target: &Type) -> bool {
-        match self.poketype {
+        match *self.poketype.borrow() {
             Poketype::Mono(type_) => *target == type_,
             Poketype::Dual(types) => *target == types[0] || *target == types[1],
         }
     }
 
     pub fn type_eff(&self, target: &Type) -> f32 {
-        target.calc_eff(&self.poketype)
+        target.calc_eff(&self.poketype.borrow())
     }
 }

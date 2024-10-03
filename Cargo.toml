@@ -7,6 +7,5 @@ edition = "2021"
 
 [dependencies]
 bounded-integer = "0.5.7"
-derive_more = { version = "1.0.0", features = ["full"] }
 rand = "0.8.5"
 ratatui = "0.27.0"

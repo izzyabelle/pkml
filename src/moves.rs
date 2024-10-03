@@ -51,7 +51,7 @@ impl From<MoveId> for Move {
         match id {
             MoveId::Default => Self {
                 id,
-                pp: BoundedI32::new(24, 0, 24).unwrap(),
+                pp: BoundedI32::new(24, 0, 24),
                 damage_type: Mtype::Physical,
                 poke_type: Type::Normal,
                 base_power: None,
@@ -78,7 +78,7 @@ impl From<MoveId> for Move {
             },
             MoveId::Uturn => Self {
                 id,
-                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                pp: BoundedI32::new(32, 0, 32),
                 damage_type: Mtype::Physical,
                 poke_type: Type::Bug,
                 base_power: Some(70),
@@ -87,7 +87,7 @@ impl From<MoveId> for Move {
             },
             MoveId::Stealthrock => Self {
                 id,
-                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                pp: BoundedI32::new(32, 0, 32),
                 damage_type: Mtype::Status,
                 poke_type: Type::Rock,
                 effects: vec![Effect::InflictHazard(
@@ -107,7 +107,7 @@ impl From<MoveId> for Move {
             },
             MoveId::Roost => Self {
                 id,
-                pp: BoundedI32::new(16, 0, 16).unwrap(),
+                pp: BoundedI32::new(16, 0, 16),
                 damage_type: Mtype::Status,
                 poke_type: Type::Flying,
                 effects: vec![Effect::Heal(PlayerId::Active, 2)],
@@ -130,7 +130,7 @@ impl From<MoveId> for Move {
             },
             MoveId::Refresh => Self {
                 id,
-                pp: BoundedI32::new(32, 0, 32).unwrap(),
+                pp: BoundedI32::new(32, 0, 32),
                 damage_type: Mtype::Status,
                 effects: vec![Effect::Cure(PlayerId::Active)],
                 ..Default::default()
@@ -159,7 +159,7 @@ impl From<MoveId> for Move {
             MoveId::Rapidspin => Self {
                 id,
                 base_power: Some(20),
-                pp: BoundedI32::new(64, 0, 64).unwrap(),
+                pp: BoundedI32::new(64, 0, 64),
                 effects: vec![Effect::ClearHazard(PlayerId::Active)],
                 ..Default::default()
             },

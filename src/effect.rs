@@ -121,7 +121,7 @@ impl Game {
                     let rem_hp;
                     if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
                         let prev = target_mon.hp.data;
-                        target_mon.hp.data -= damage.collapse(target_mon.hp);
+                        target_mon.hp -= damage.collapse(target_mon.hp);
                         let diff = prev - target_mon.hp.data;
                         let mon_name = format!("{}", target_mon.id);
                         rem_hp = target_mon.hp.data;
@@ -200,8 +200,8 @@ impl Game {
                     ));
                 }
                 Effect::SetWeather(weather) => {
-                    if self.weather != Some(weather) {
-                        self.weather = Some(weather);
+                    if *self.weather.borrow() != Some(weather) {
+                        *self.weather.borrow_mut() = Some(weather);
                         match weather {
                             WeatherId::Sand => {
                                 self.log
@@ -226,6 +226,15 @@ impl Game {
                 }
                 Effect::Switch(idx) => {
                     self.player_mut(&PlayerId::Active).roster.active = Some(idx);
+                    self.log(format!(
+                        "{} switches to {}",
+                        self.player(&PlayerId::Active),
+                        self.player(&PlayerId::Active)
+                            .roster
+                            .active()
+                            .expect("switch failed")
+                            .id
+                    ))
                 }
             }
         }
