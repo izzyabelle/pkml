@@ -1,6 +1,6 @@
 use crate::app::{App, AppResult};
-use crate::effect::PlayerId;
 use crate::game::MoveSelection;
+use crate::game::PlayerId;
 use crate::ui::IMode;
 use rand::seq::SliceRandom;
 use rand::thread_rng;

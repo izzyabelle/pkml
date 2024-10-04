@@ -10,6 +10,7 @@ use crate::{
     bounded_i32::BoundedI32,
     game::WeatherId,
     poketype::{Poketype, Type},
+    status::{Status, StatusBlock},
     trigger::Item,
     EmptyResult,
 };
@@ -22,6 +23,7 @@ pub struct Stat {
     weather: Rc<RefCell<Option<WeatherId>>>,
     poketype: Rc<RefCell<Poketype>>,
     item: Rc<RefCell<Option<Item>>>,
+    status: Rc<RefCell<StatusBlock>>,
 }
 
 #[derive(Debug, Default, Clone)]
@@ -39,37 +41,42 @@ impl StatBlock {
         poketype: Rc<RefCell<Poketype>>,
         item: Rc<RefCell<Option<Item>>>,
         weather: Rc<RefCell<Option<WeatherId>>>,
+        status: Rc<RefCell<StatusBlock>>,
     ) -> Self {
         Self {
             atk: Stat::new(
                 values[0],
                 StatId::Atk,
-                poketype.clone(),
-                item.clone(),
-                weather.clone(),
+                Rc::clone(&poketype),
+                Rc::clone(&item),
+                Rc::clone(&weather),
+                Rc::clone(&status),
             ),
             def: Stat::new(
                 values[1],
                 StatId::Def,
-                poketype.clone(),
-                item.clone(),
-                weather.clone(),
+                Rc::clone(&poketype),
+                Rc::clone(&item),
+                Rc::clone(&weather),
+                Rc::clone(&status),
             ),
             spa: Stat::new(
                 values[2],
                 StatId::Spa,
-                poketype.clone(),
-                item.clone(),
-                weather.clone(),
+                Rc::clone(&poketype),
+                Rc::clone(&item),
+                Rc::clone(&weather),
+                Rc::clone(&status),
             ),
             spd: Stat::new(
                 values[3],
                 StatId::Spd,
-                poketype.clone(),
-                item.clone(),
-                weather.clone(),
+                Rc::clone(&poketype),
+                Rc::clone(&item),
+                Rc::clone(&weather),
+                Rc::clone(&status),
             ),
-            spe: Stat::new(values[4], StatId::Spe, poketype, item, weather),
+            spe: Stat::new(values[4], StatId::Spe, poketype, item, weather, status),
             ..Default::default()
         }
     }
@@ -135,6 +142,7 @@ impl Stat {
         poketype: Rc<RefCell<Poketype>>,
         item: Rc<RefCell<Option<Item>>>,
         weather: Rc<RefCell<Option<WeatherId>>>,
+        status: Rc<RefCell<StatusBlock>>,
     ) -> Self {
         Self {
             id,
@@ -147,27 +155,36 @@ impl Stat {
             weather,
             poketype,
             item,
+            status,
         }
     }
 
     pub fn curr(&self) -> i32 {
-        let out = match self.stage.data.cmp(&0) {
+        let mut out = match self.stage.data.cmp(&0) {
             Ordering::Less => self.base / (2 - self.stage.data) * 2,
             Ordering::Equal => self.base,
             Ordering::Greater => self.base * ((2 + self.stage.data) / 2),
         };
 
-        let (rock, weather, item) = (
-            self.poketype.borrow().contains(Type::Rock),
-            *self.weather.borrow(),
-            *self.item.borrow(),
-        );
+        match self.id {
+            StatId::Spe => {
+                if *self.item.borrow() == Some(Item::ChoiceScarf) {
+                    out = (out * 3) / 2
+                }
 
-        match (item, self.id, weather, rock) {
-            (_, StatId::Spd, Some(WeatherId::Sand), true) => out / 2 * 3,
-            (Some(Item::ChoiceScarf), StatId::Spe, _, _) => out / 2 * 3,
-            _ => out,
+                if self.status.borrow().data.contains_key(&Status::Paralyse) {
+                    out /= 4
+                }
+            }
+            StatId::Spd => {
+                if *self.weather.borrow() == Some(WeatherId::Sand) {
+                    out = (out * 3) / 2
+                }
+            }
+            _ => {}
         }
+
+        out
     }
 
     pub fn alter(&mut self, diff: i32) -> bool {

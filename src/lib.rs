@@ -5,7 +5,6 @@ type EmptyResult = Result<(), Box<dyn Error>>;
 
 pub mod app;
 pub mod bounded_i32;
-pub mod effect;
 pub mod event;
 pub mod game;
 pub mod handler;
