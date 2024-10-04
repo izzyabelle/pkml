@@ -11,7 +11,7 @@ use crate::poketype::Poketype;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
 use crate::stat::{Stat, StatBlock, StatId};
-use crate::status::Status;
+use crate::status::{Status, StatusBlock};
 use crate::trigger::{Ability, Item};
 
 #[derive(Debug, Default)]
@@ -23,7 +23,7 @@ pub struct Pokemon {
     pub moves: PointerVec<Move>,
     pub poketype: Rc<RefCell<Poketype>>,
     pub stats: StatBlock,
-    pub status: HashMap<Status, i8>,
+    pub status: Rc<RefCell<StatusBlock>>,
 }
 
 impl Display for Pokemon {
@@ -70,7 +70,14 @@ impl Pokemon {
     ) -> Self {
         let item = Rc::new(RefCell::new(item));
         let poketype = Rc::new(RefCell::new(poketype));
-        let stats = StatBlock::new(stats, Rc::clone(&poketype), Rc::clone(&item), weather);
+        let status = Rc::new(RefCell::new(StatusBlock::new()));
+        let stats = StatBlock::new(
+            stats,
+            Rc::clone(&poketype),
+            Rc::clone(&item),
+            weather,
+            Rc::clone(&status),
+        );
         Self {
             ability,
             hp,
@@ -79,16 +86,7 @@ impl Pokemon {
             moves,
             poketype,
             stats,
-            status: HashMap::new(),
-        }
-    }
-
-    pub fn add_status(&mut self, status: Status) -> bool {
-        if let Some(_) = self.status.get(&status) {
-            false
-        } else {
-            self.status.insert(status, 1);
-            true
+            status,
         }
     }
 

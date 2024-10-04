@@ -85,6 +85,10 @@ impl Player {
             inputs: Vec::new(),
         }
     }
+
+    pub fn has_active(&self) -> bool {
+        self.roster.active.is_some()
+    }
 }
 
 impl Display for Player {
