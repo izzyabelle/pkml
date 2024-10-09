@@ -3,8 +3,10 @@ use std::fmt::Display;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
+use ratatui::crossterm::cursor::MoveLeft;
+
 use crate::bounded_i32::BoundedI32;
-use crate::game::{HazardId, MoveSelection, WeatherId};
+use crate::game::{GameState, HazardId, MoveSelection, WeatherId};
 use crate::pokemon::Pokemon;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
@@ -83,6 +85,49 @@ impl Player {
                 Pokemon::preset(PokeId::Starmie, weather),
             ]),
             inputs: Vec::new(),
+        }
+    }
+
+    pub fn list_valid_inputs(&self, state: &GameState) -> Vec<MoveSelection> {
+        if let Some(active_idx) = self.roster.active {
+            let mut out: Vec<MoveSelection> = Vec::new();
+
+            // Add switches to living mons that are not the active pokemon
+            out.extend(
+                self.roster
+                    .living()
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(idx, _)| {
+                        if idx != active_idx {
+                            Some(MoveSelection::Switch(idx))
+                        } else {
+                            None
+                        }
+                    }),
+            );
+
+            // If the game is not waiting for a switch input, add active pokemon's remaining moves
+            if *state != GameState::AwaitingSwitch {
+                out.extend(
+                    self.roster[active_idx]
+                        .moves
+                        .living()
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, _)| MoveSelection::Move(idx)),
+                );
+            }
+
+            out
+        } else {
+            // If there is no active mon, list all living mons
+            self.roster
+                .living()
+                .iter()
+                .enumerate()
+                .map(|(idx, _)| MoveSelection::Switch(idx))
+                .collect()
         }
     }
 

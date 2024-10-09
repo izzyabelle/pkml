@@ -1,12 +1,15 @@
 use crate::bounded_i32::BoundedI32;
+use crate::moves::Mtype;
 use crate::player::HazardBlock;
 use crate::poketype::Type;
+use crate::selvec::PlayerId;
 use crate::status::Status;
+use crate::trigger::Item;
 use rand::seq::SliceRandom;
 use rand::{thread_rng, Rng};
-use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::fmt::Display;
+use std::ptr::write;
 use std::rc::Rc;
 
 use crate::{player::Player, pokemon::Pokemon, selvec::PointerVec, stat::StatId};
@@ -103,6 +106,12 @@ pub enum MoveSelection {
     Move(usize),
 }
 
+fn write_log(log: &mut [Vec<String>], message: String) {
+    log.last_mut()
+        .expect("attempted to write to empty log")
+        .push(message);
+}
+
 impl Game {
     pub fn new() -> Self {
         let weather = Rc::new(RefCell::new(None));
@@ -117,34 +126,6 @@ impl Game {
         }
     }
 
-    pub fn log(&mut self, message: String) {
-        self.log.last_mut().unwrap().push(message);
-    }
-
-    pub fn player(&self, target: &PlayerId) -> &Player {
-        match target {
-            PlayerId::Player1 => &self.players[0],
-            PlayerId::Player2 => &self.players[1],
-            PlayerId::Active => self.players.active().unwrap(),
-            PlayerId::Inactive => {
-                let active = self.players.active.unwrap();
-                &self.players[(active + 1) % 2]
-            }
-        }
-    }
-
-    pub fn player_mut(&mut self, target: &PlayerId) -> &mut Player {
-        match target {
-            PlayerId::Player1 => &mut self.players[0],
-            PlayerId::Player2 => &mut self.players[1],
-            PlayerId::Active => self.players.active_mut().unwrap(),
-            PlayerId::Inactive => {
-                let active = self.players.active.unwrap();
-                &mut self.players[(active + 1) % 2]
-            }
-        }
-    }
-
     pub fn execute_turn(&mut self) {
         match self.state {
             GameState::TurnStart => {
@@ -156,7 +137,7 @@ impl Game {
             }
             GameState::MidTurn => {
                 self.state = GameState::TurnEnd;
-                if self.player(&PlayerId::Active).has_active() {
+                if self.players[&PlayerId::Active].has_active() {
                     self.execute_move();
                 }
             }
@@ -168,12 +149,12 @@ impl Game {
                     self.invert_active_player();
                 }
 
-                if self.player(&PlayerId::Player1).roster.active().is_none() {
+                if self.players[0].roster.active().is_none() {
                     self.prev_state.push(self.state);
                     self.state = GameState::AwaitingSwitch;
                     self.players.active = Some(0);
                 }
-                if self.player(&PlayerId::Player2).roster.active().is_none() {
+                if self.players[1].roster.active().is_none() {
                     self.prev_state.push(self.state);
                     self.state = GameState::AwaitingSwitch;
                     self.players.active = Some(1);
@@ -195,7 +176,7 @@ impl Game {
         let winner = self.check_winner();
         if winner != GameResult::Incomplete {
             self.state = GameState::Completed(winner);
-            self.log(String::from("game finished"));
+            write_log(&mut self.log, String::from("game finished"));
         }
 
         match self.state {
@@ -215,7 +196,7 @@ impl Game {
 
     fn apply_eot_effects(&mut self) {
         let mut effects = Vec::new();
-        if let Some(active_mon) = self.player(&PlayerId::Active).roster.active() {
+        if let Some(active_mon) = self.players[&PlayerId::Active].roster.active() {
             // weather effects
             let (weather, sand, ice) = (
                 *self.weather.borrow(),
@@ -233,6 +214,17 @@ impl Game {
                     Damage::Fractional(1, 12),
                 )]),
                 _ => {}
+            }
+
+            // eot item triggers
+            if let Some(item) = *active_mon.item.borrow() {
+                match item {
+                    Item::Leftovers => effects.push(vec![Effect::Heal(PlayerId::Active, 16)]),
+                    Item::ToxicOrb => {
+                        effects.push(vec![Effect::InflictStatus(PlayerId::Active, Status::Toxic)])
+                    }
+                    _ => {}
+                }
             }
 
             // increment counters
@@ -287,17 +279,15 @@ impl Game {
 
     pub fn input_rand_ai(&mut self) {
         let mut rng = thread_rng();
-        let choices = self.list_valid_inputs(&PlayerId::Player2);
-        self.player_mut(&PlayerId::Player2)
+        let choices = self.players[1].list_valid_inputs(&self.state);
+        self.players[1]
             .inputs
             .push(*choices.choose(&mut rng).unwrap());
     }
 
     fn check_winner(&self) -> GameResult {
-        match (
-            self.list_valid_inputs(&PlayerId::Player1).len(),
-            self.list_valid_inputs(&PlayerId::Player2).len(),
-        ) {
+        // check if either player's entire roster is dead
+        match (self.players[0].roster.dead, self.players[1].roster.dead) {
             (0, 0) => GameResult::Tie,
             (_, 0) => GameResult::Winner(0),
             (0, _) => GameResult::Winner(1),
@@ -305,48 +295,67 @@ impl Game {
         }
     }
 
-    pub fn list_valid_inputs(&self, player: &PlayerId) -> Vec<MoveSelection> {
-        let mut out = Vec::new();
-        let player_obj = self.player(player);
-        let active_idx = player_obj.roster.active;
-        for i in 0..player_obj.roster.living().len() {
-            if Some(i) != active_idx {
-                out.push(MoveSelection::Switch(i));
-            }
-        }
-        if let Some(active) = player_obj.roster.active() {
-            if self.state != GameState::AwaitingSwitch || self.abs_active_player() != *player {
-                for i in 0..active.moves.living().len() {
-                    out.push(MoveSelection::Move(i));
-                }
-            }
-        }
-        out
-    }
-
-    fn abs_active_player(&self) -> PlayerId {
-        if self.players.active.unwrap() == 0 {
-            PlayerId::Player1
-        } else {
-            PlayerId::Player2
-        }
-    }
-
+    /// executes the last move input by the active player
     fn execute_move(&mut self) {
-        if let MoveSelection::Switch(_) = self.player(&PlayerId::Active).inputs.last().unwrap() {
-            let effects = self.calculate_input_effects();
-            self.log(effects.1);
-            self.apply_effects(effects.0);
-            self.log(String::new());
-            return;
+        let player = &self.players[&PlayerId::Active];
+        match *player
+            .inputs
+            .last()
+            .expect("empty input vec upon executing move")
+        {
+            MoveSelection::Switch(idx) => {
+                // write different log message depending on whether mon is being withdrawn
+                write_log(
+                    &mut self.log,
+                    if let Some(mon) = player.roster.active() {
+                        format!("{} withdraws {}", player, mon.id)
+                    } else {
+                        format!("{} selects new mon", player)
+                    },
+                );
+
+                let mut effects = vec![Effect::Switch(idx)];
+                effects.extend(self.calc_switch(&PlayerId::Active));
+                self.apply_effects(effects);
+            }
+            MoveSelection::Move(idx) => {
+                // check if pokemon can move
+                if let Some(message) = self.exec_moveskip() {
+                    write_log(&mut self.log, message);
+                    return;
+                }
+
+                let player = &self.players[&PlayerId::Active];
+
+                let active_mon = player
+                    .roster
+                    .active()
+                    .expect("move used with no active mon");
+
+                write_log(
+                    &mut self.log,
+                    format!(
+                        "{}'s {} used {}",
+                        player, active_mon.id, active_mon.moves[idx].id
+                    ),
+                );
+
+                self.apply_effects(self.calc_move());
+            }
         }
+        write_log(&mut self.log, String::new());
+    }
 
+    /// if return Some move is skipped with message. moveskip statuses mutated
+    fn exec_moveskip(&mut self) -> Option<String> {
         let mut rand = thread_rng();
-        let active_mon = self.player(&PlayerId::Active).roster.active().unwrap();
-        let mut log_messages = Vec::new();
-        let mut miss_turn = false;
+        let active_mon = &mut self.players[&PlayerId::Active]
+            .roster
+            .active()
+            .expect("no active mon");
         let mut removed_statuses = Vec::new();
-
+        let mut message = None;
+        let mut statusblock = active_mon.status.try_borrow_mut().unwrap();
         for status in &[
             Status::Paralyse,
             Status::Sleep,
@@ -354,179 +363,142 @@ impl Game {
             Status::Confusion,
             Status::Flinch,
         ] {
-            if let Some(value) = active_mon
-                .status
-                .try_borrow_mut()
-                .expect("refcell error")
-                .data
-                .get_mut(status)
-            {
+            if let Some(value) = statusblock.data.get_mut(status) {
                 match status {
                     Status::Paralyse => {
                         if rand.gen_range(0..=3) == 0 {
-                            log_messages.push(format!("{} was full para", active_mon.id));
-                            miss_turn = true;
-                            break;
+                            message = Some(format!("{} was full para", active_mon.id));
                         }
                     }
                     Status::Sleep => {
                         if *value == 0 {
-                            log_messages.push(format!("{} woke up!", active_mon.id));
+                            write_log(&mut self.log, format!("{} woke up!", active_mon.id));
                             removed_statuses.push(status);
                         } else {
                             *value -= 1;
-                            log_messages.push(format!("{} was sleeping", active_mon.id));
-                            miss_turn = true;
-                            break;
+                            message = Some(format!("{} was sleeping", active_mon.id));
                         }
                     }
                     Status::Freeze => {
                         if rand.gen_range(0..=9) == 0 {
-                            log_messages.push(format!("{} thawed!", active_mon.id));
+                            write_log(&mut self.log, format!("{} thawed!", active_mon.id));
                             removed_statuses.push(status);
                         } else {
-                            log_messages.push(format!("{} is frozen", active_mon.id));
-                            miss_turn = true;
-                            break;
+                            message = Some(format!("{} is frozen", active_mon.id));
                         }
                     }
                     Status::Confusion => {
                         if *value == 0 {
-                            log_messages
-                                .push(format!("{} snapped out of confusion", active_mon.id));
+                            write_log(
+                                &mut self.log,
+                                format!("{} snapped out of confusion", active_mon.id),
+                            );
                             removed_statuses.push(status);
                         } else if rand.gen_range(0..=1) == 0 {
-                            log_messages
-                                .push(format!("{} hit itself in confusion(todo)", active_mon.id));
+                            message =
+                                Some(format!("{} hit itself in confusion(todo)", active_mon.id));
                             *value -= 1;
-                            miss_turn = true;
-                            break;
                         } else {
                             *value -= 1;
                         }
                     }
                     Status::Flinch => {
-                        log_messages.push(format!("{} flinched", active_mon.id));
+                        message = Some(format!("{} flinched", active_mon.id));
                         removed_statuses.push(status);
-                        miss_turn = true;
-                        break;
                     }
                     _ => {}
                 }
             }
         }
-
-        for status in &removed_statuses {
-            active_mon
-                .status
-                .try_borrow_mut()
-                .expect("refcell error")
-                .data
-                .remove(status);
-        }
-
-        for message in log_messages {
-            self.log(message);
-        }
-
-        if miss_turn {
-            return;
-        }
-
-        let effects = self.calculate_input_effects();
-        self.log(effects.1);
-        self.apply_effects(effects.0);
-        self.log(String::new());
-    }
-
-    fn calculate_input_effects(&self) -> (Vec<Effect>, String) {
-        let player = self.player(&PlayerId::Active);
-        match player.inputs.last().unwrap() {
-            MoveSelection::Switch(idx) => (
-                [
-                    vec![Effect::Switch(*idx)],
-                    self.calc_hazards(&PlayerId::Active),
-                ]
-                .concat(),
-                if let Some(mon) = player.roster.active() {
-                    format!("{} withdraws {}", player, mon.id)
-                } else {
-                    format!("{} selects new mon", player)
-                },
-            ),
-            MoveSelection::Move(idx) => {
-                let player = self.player(&PlayerId::Active);
-                let active_mon = player
-                    .roster
-                    .active()
-                    .expect("Move used with no active mon");
-                let selected_move = &active_mon.moves[*idx];
-                let mut out = Vec::new();
-                if let (Some(bp), Some(inactive_mon)) = (
-                    selected_move.base_power,
-                    self.player(&PlayerId::Inactive).roster.active(),
-                ) {
-                    let (atk, def, burn, weather, random, stab, eff) = (
-                        active_mon.stats[StatId::Atk].curr() as f32,
-                        inactive_mon.stats[StatId::Def].curr() as f32,
-                        if active_mon.status.borrow().data.get(&Status::Burn).is_some() {
-                            0.5f32
-                        } else {
-                            1.0f32
-                        },
-                        1.0f32,
-                        thread_rng().gen_range(85..101) as f32 / 100.0,
-                        if active_mon
-                            .poketype
-                            .borrow()
-                            .contains(selected_move.poke_type)
-                        {
-                            1.5f32
-                        } else {
-                            1.0f32
-                        },
-                        selected_move
-                            .poke_type
-                            .calc_eff(&inactive_mon.poketype.borrow()),
-                    );
-                    out.push(Effect::Damage(
-                        PlayerId::Inactive,
-                        Damage::Normal(
-                            ((((42.0f32 * bp as f32 * atk / def) / 50.0f32) * burn * weather)
-                                * stab
-                                * eff
-                                * random) as i32,
-                        ),
-                    ))
-                }
-                match selected_move.freq {
-                    Some(data) => {
-                        if thread_rng().gen::<f32>() > data {
-                            out.append(&mut selected_move.effects.clone());
-                        }
-                    }
-                    None => out.append(&mut selected_move.effects.clone()),
-                }
-                (
-                    out,
-                    format!("{}'s {} used {}", player, active_mon.id, selected_move.id),
-                )
+        if let Ok(mut data) = active_mon.status.try_borrow_mut() {
+            for status in removed_statuses {
+                data.data.remove(status);
             }
         }
+        message
     }
 
-    fn calc_hazards(&self, target: &PlayerId) -> Vec<Effect> {
+    fn calc_move(&self) -> Vec<Effect> {
+        let active_player = &self.players[&PlayerId::Active];
+        let active_mon = &active_player
+            .roster
+            .active()
+            .expect("move used with no active mon");
+        let selected_move =
+            if let MoveSelection::Move(idx) = active_player.inputs.last().expect("no inputs") {
+                &active_mon.moves[*idx]
+            } else {
+                panic!("move calculatd with switch input");
+            };
+
         let mut out = Vec::new();
-        match self.player(target).hazards.stealth_rock.data {
-            1 => out.push(Effect::Damage(*target, Damage::Fractional(1, 8))),
-            _ => {}
+        if let (Some(bp), Some(inactive_mon)) = (
+            selected_move.base_power,
+            self.players[&PlayerId::Inactive].roster.active(),
+        ) {
+            let (atk, def, burn, weather, random, stab, eff) = (
+                if selected_move.damage_type == Mtype::Physical {
+                    active_mon.stats[StatId::Atk].curr() as f32
+                } else {
+                    active_mon.stats[StatId::Spa].curr() as f32
+                },
+                if selected_move.damage_type == Mtype::Physical {
+                    inactive_mon.stats[StatId::Def].curr() as f32
+                } else {
+                    inactive_mon.stats[StatId::Spd].curr() as f32
+                },
+                if active_mon.status.borrow().data.contains_key(&Status::Burn) {
+                    0.5f32
+                } else {
+                    1.0f32
+                },
+                1.0f32,
+                thread_rng().gen_range(85..=100) as f32 / 100.0,
+                if active_mon
+                    .poketype
+                    .borrow()
+                    .contains(selected_move.poke_type)
+                {
+                    1.5f32
+                } else {
+                    1.0f32
+                },
+                selected_move
+                    .poke_type
+                    .calc_eff(&inactive_mon.poketype.borrow()),
+            );
+            out.push(Effect::Damage(
+                PlayerId::Inactive,
+                Damage::Normal(
+                    (((42.0f32 * bp as f32 * (atk / def)) / 50.0f32 * burn * weather)
+                        * stab
+                        * eff
+                        * random) as i32,
+                ),
+            ))
         }
-        match self.player(target).hazards.toxic_spikes.data {
+        match selected_move.freq {
+            Some(data) => {
+                if thread_rng().gen::<f32>() > data {
+                    out.append(&mut selected_move.effects.clone());
+                }
+            }
+            None => out.append(&mut selected_move.effects.clone()),
+        }
+        out
+    }
+
+    fn calc_switch(&self, target: &PlayerId) -> Vec<Effect> {
+        let mut out = Vec::new();
+        if self.players[target].hazards.stealth_rock.data == 1 {
+            out.push(Effect::Damage(*target, Damage::Fractional(1, 8)))
+        }
+        match self.players[target].hazards.toxic_spikes.data {
             1 => out.push(Effect::InflictStatus(*target, Status::Poison)),
             2 => out.push(Effect::InflictStatus(*target, Status::Toxic)),
             _ => {}
         }
-        match self.player(target).hazards.spikes.data {
+        match self.players[target].hazards.spikes.data {
             1 => out.push(Effect::Damage(*target, Damage::Fractional(1, 8))),
             2 => out.push(Effect::Damage(*target, Damage::Fractional(1, 6))),
             3 => out.push(Effect::Damage(*target, Damage::Fractional(1, 4))),
@@ -550,10 +522,10 @@ impl Game {
     fn init_turn_order(&mut self) {
         let active;
         if let (p1, Some(p1_mon), p2, Some(p2_mon)) = (
-            self.player(&PlayerId::Player1),
-            self.player(&PlayerId::Player1).roster.active(),
-            self.player(&PlayerId::Player2),
-            self.player(&PlayerId::Player2).roster.active(),
+            &self.players[0],
+            self.players[0].roster.active(),
+            &self.players[1],
+            self.players[1].roster.active(),
         ) {
             let (input1, input2) = (
                 p1.inputs.last().expect("P1 no input"),
@@ -586,8 +558,8 @@ impl Game {
 
     fn order_turn_by_speed(&mut self) {
         self.players.active = if let (Some(p1_mon), Some(p2_mon)) = (
-            self.player(&PlayerId::Active).roster.active(),
-            self.player(&PlayerId::Inactive).roster.active(),
+            self.players[&PlayerId::Active].roster.active(),
+            self.players[&PlayerId::Inactive].roster.active(),
         ) {
             if (p1_mon.stats[StatId::Spe].curr() > p2_mon.stats[StatId::Spe].curr())
                 | ((p1_mon.stats[StatId::Spe].curr() == p2_mon.stats[StatId::Spe].curr())
@@ -603,7 +575,7 @@ impl Game {
     }
 
     fn invert_active_player(&mut self) {
-        let active = self.players.active.as_mut().unwrap();
+        let active = self.players.active.as_mut().expect("no active player");
         *active = (*active + 1) % 2;
     }
 
@@ -611,208 +583,163 @@ impl Game {
         for effect in effects {
             match effect {
                 Effect::InflictStatus(target, status) => {
-                    if let Some(mon) = self.player_mut(&target).roster.active_mut() {
-                        mon.status
-                            .try_borrow_mut()
-                            .expect("refcell error")
-                            .add(&status);
-                        let mon_name = format!("{}", mon.id);
-                        self.log(format!(
-                            "{}'s {} was {}",
-                            self.player(&target),
-                            mon_name,
-                            status
-                        ));
+                    if let Some(mon) = self.players[&target].roster.active_mut() {
+                        let mut success = false;
+                        if let Ok(mut status_ref) = mon.status.try_borrow_mut() {
+                            success = status_ref.add(&status);
+                        }
+
+                        if success {
+                            let mon_name = mon.id.to_string();
+                            write_log(
+                                &mut self.log,
+                                format!("{}'s {} was {}", self.players[&target], mon_name, status),
+                            );
+                        }
                     }
                 }
 
                 Effect::AlterStat(target, stat, stat_mod) => {
-                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
+                    if let Some(target_mon) = self.players[&target].roster.active_mut() {
                         let mod_str = if stat_mod > 0 { "raised" } else { "lowered" };
                         if target_mon.stats[stat].alter(stat_mod) {
-                            let mon_name = format!("{}", target_mon.id);
-                            self.log(format!(
-                                "{}'s {} {} was {}",
-                                self.player(&target),
-                                mon_name,
-                                stat,
-                                mod_str,
-                            ));
+                            let mon_name = target_mon.id.to_string();
+                            write_log(
+                                &mut self.log,
+                                format!(
+                                    "{}'s {} {} was {}",
+                                    self.players[&target], mon_name, stat, mod_str,
+                                ),
+                            );
                         }
                     }
                 }
+
                 Effect::InflictHazard(target, hazard) => {
-                    let target_player = self.player_mut(&target);
-
-                    if target_player.hazards[hazard].is_max() {
-                        continue;
+                    let target_player = &mut self.players[&target];
+                    if !target_player.hazards[hazard].is_max() {
+                        target_player.hazards[hazard] += 1;
+                        let player_name = target_player.to_string();
+                        let hazard_name = target_player.hazards[hazard].to_string();
+                        write_log(
+                            &mut self.log,
+                            format!("{} was placed on {}'s field", hazard_name, player_name),
+                        );
                     }
-
-                    target_player.hazards[hazard] += 1;
-
-                    let (player_name, hazard_name) = (
-                        format!("{}", target_player),
-                        format!("{}", target_player.hazards[hazard]),
-                    );
-
-                    self.log(format!(
-                        "{} was placed on {}'s field",
-                        hazard_name, player_name,
-                    ));
                 }
+
                 Effect::ClearHazard(target) => {
-                    let target_player = self.player_mut(&target);
+                    let target_player = &mut self.players[&target];
                     target_player.hazards = HazardBlock::default();
-                    let player_name = format!("{}", target_player);
-
-                    self.log(format!("hazards were cleared from {}'s field", player_name));
+                    let player_name = target_player.to_string();
+                    write_log(
+                        &mut self.log,
+                        format!("hazards were cleared from {}'s field", player_name),
+                    );
                 }
+
                 Effect::Damage(target, damage) => {
-                    let rem_hp;
-                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
-                        let prev = target_mon.hp.data;
+                    if let Some(target_mon) = self.players[&target].roster.active_mut() {
+                        let prev_hp = target_mon.hp.data;
                         target_mon.hp -= damage.collapse(target_mon.hp);
-                        let diff = prev - target_mon.hp.data;
-                        let mon_name = format!("{}", target_mon.id);
-                        rem_hp = target_mon.hp.data;
+                        let diff = prev_hp - target_mon.hp.data;
+                        let mon_name = target_mon.id.to_string();
+                        let rem_hp = target_mon.hp.data;
 
-                        self.log(format!(
-                            "{}'s {} lost {} hp",
-                            self.player(&target),
-                            mon_name,
-                            diff,
-                        ));
-                    } else {
-                        continue;
-                    }
+                        write_log(
+                            &mut self.log,
+                            format!("{}'s {} lost {} hp", self.players[&target], mon_name, diff),
+                        );
 
-                    if rem_hp == 0 {
-                        self.player_mut(&target).roster.kill();
-                        self.log(String::from("They fainted"));
+                        if rem_hp == 0 {
+                            self.players[&target].roster.kill();
+                            write_log(&mut self.log, String::from("They fainted"));
+                        }
                     }
                 }
 
                 Effect::Cure(target) => {
-                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
-                        for status in &vec![Status::Burn, Status::Paralyse, Status::Toxic] {
-                            target_mon
-                                .status
-                                .try_borrow_mut()
-                                .expect("refcell error")
-                                .clear_nv();
+                    if let Some(target_mon) = self.players[&target].roster.active_mut() {
+                        if let Ok(mut status_ref) = target_mon.status.try_borrow_mut() {
+                            status_ref.clear_nv();
                         }
-                        let mon_name = format!("{}", target_mon.id);
-
-                        self.log(format!(
-                            "{}'s {} was cured of status",
-                            self.player(&target),
-                            mon_name,
-                        ));
+                        let mon_name = target_mon.id.to_string();
+                        write_log(
+                            &mut self.log,
+                            format!(
+                                "{}'s {} was cured of status",
+                                self.players[&target], mon_name
+                            ),
+                        );
                     }
                 }
+
                 Effect::Heal(target, frac) => {
-                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
-                        if target_mon.hp.data == 0 {
-                            continue;
+                    if let Some(target_mon) = self.players[&target].roster.active_mut() {
+                        if target_mon.hp.data > 0 {
+                            let prev_hp = target_mon.hp.data;
+                            target_mon.hp += target_mon.hp.max / frac;
+                            let diff = target_mon.hp.data - prev_hp;
+                            let mon_name = target_mon.id.to_string();
+                            write_log(
+                                &mut self.log,
+                                format!(
+                                    "{}'s {} gained {} hp",
+                                    self.players[&target], mon_name, diff
+                                ),
+                            );
                         }
-                        let prev = target_mon.hp.data;
-                        target_mon.hp += target_mon.hp.max / frac;
-                        let diff = target_mon.hp - prev;
-                        let mon_name = format!("{}", target_mon.id);
-
-                        self.log(format!(
-                            "{}'s {} gained {} hp",
-                            self.player(&target),
-                            mon_name,
-                            diff,
-                        ));
                     }
                 }
+
                 Effect::OHKO(target) => {
-                    let mon_name;
-                    if let Some(target_mon) = self.player_mut(&target).roster.active_mut() {
+                    if let Some(target_mon) = self.players[&target].roster.active_mut() {
                         target_mon.hp.data = 0;
-                        mon_name = format!("{}", target_mon.id);
-                    } else {
-                        continue;
+                        let mon_name = target_mon.id.to_string();
+                        self.players[&target].roster.kill();
+                        write_log(
+                            &mut self.log,
+                            format!("{}'s {} fainted!", self.players[&target], mon_name),
+                        );
                     }
-                    self.player_mut(&target).roster.kill();
+                }
 
-                    self.log(format!("{}'s {} fainted!", self.player(&target), mon_name));
-                }
                 Effect::MidSwitch(target) => {
-                    let target_player = self.player_mut(&target);
-                    if target_player.roster.dead == 1 {
-                        continue;
+                    let target_player = &mut self.players[&target];
+                    if target_player.roster.dead != 1 {
+                        self.prev_state.push(self.state);
+                        self.state = GameState::AwaitingSwitch;
+                        write_log(
+                            &mut self.log,
+                            format!("{} selects a pokemon to switch to", self.players[&target]),
+                        );
                     }
-                    self.prev_state.push(self.state);
-                    self.state = GameState::AwaitingSwitch;
-                    self.log(format!(
-                        "{} selects a pokemon to switch to",
-                        self.player(&target)
-                    ));
                 }
+
                 Effect::SetWeather(weather) => {
                     if *self.weather.borrow() != Some(weather) {
-                        *self
-                            .weather
-                            .try_borrow_mut()
-                            .expect("Weather refcell error") = Some(weather);
-                        match weather {
-                            WeatherId::Sand => {
-                                self.log
-                                    .last_mut()
-                                    .expect("attempted to write to empty game log vec")
-                                    .push(format!("A sandstorm kicked up!"));
-                            }
-                            WeatherId::Hail => {
-                                self.log
-                                    .last_mut()
-                                    .expect("attempted to write to empty game log vec")
-                                    .push(format!("Hail starts"));
-                            }
-                            WeatherId::Rain => {
-                                self.log
-                                    .last_mut()
-                                    .expect("attempted to write to empty game log vec")
-                                    .push(format!("Rain starts"));
-                            }
+                        if let Ok(mut weather_ref) = self.weather.try_borrow_mut() {
+                            *weather_ref = Some(weather);
+                            let weather_message = match weather {
+                                WeatherId::Sand => "A sandstorm kicked up!",
+                                WeatherId::Hail => "Hail starts",
+                                WeatherId::Rain => "Rain starts",
+                            };
+                            write_log(&mut self.log, weather_message.to_string());
                         }
                     }
                 }
+
                 Effect::Switch(idx) => {
-                    self.player_mut(&PlayerId::Active).roster.active = Some(idx);
-                    self.log(format!(
-                        "{} sends out {}",
-                        self.player(&PlayerId::Active),
-                        self.player(&PlayerId::Active)
-                            .roster
-                            .active()
-                            .expect("switch failed")
-                            .id
-                    ))
+                    self.players[&PlayerId::Active].roster.active = Some(idx);
+                    let active_player = &self.players[&PlayerId::Active];
+                    let mon_name = &active_player.roster[idx].id;
+                    write_log(
+                        &mut self.log,
+                        format!("{} sends out {}", active_player, mon_name),
+                    );
                 }
             }
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Default)]
-pub enum PlayerId {
-    #[default]
-    Player1,
-    Player2,
-    Active,
-    Inactive,
-}
-
-impl PlayerId {
-    pub fn invert(&mut self) {
-        match self {
-            PlayerId::Player1 => *self = PlayerId::Player2,
-            PlayerId::Player2 => *self = PlayerId::Player1,
-            PlayerId::Active => *self = PlayerId::Inactive,
-            PlayerId::Inactive => *self = PlayerId::Active,
         }
     }
 }

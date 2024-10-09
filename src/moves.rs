@@ -1,6 +1,7 @@
 use crate::bounded_i32::BoundedI32;
-use crate::game::{Effect, HazardId, PlayerId};
+use crate::game::{Effect, HazardId};
 use crate::poketype::Type;
+use crate::selvec::PlayerId;
 use crate::stat::StatId;
 use crate::status::Status;
 use std::fmt::Display;
