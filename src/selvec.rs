@@ -2,6 +2,7 @@ use std::ops::{Index, IndexMut};
 
 use crate::{
     moves::Move,
+    player::Player,
     trigger::{Ability, Item},
     EmptyResult,
 };
@@ -38,6 +39,38 @@ impl<T> Index<usize> for PointerVec<T> {
 impl<T> IndexMut<usize> for PointerVec<T> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
         &mut self.data[index]
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Default)]
+pub enum PlayerId {
+    #[default]
+    Active,
+    Inactive,
+}
+
+impl Index<&PlayerId> for PointerVec<Player> {
+    type Output = Player;
+
+    fn index(&self, index: &PlayerId) -> &Self::Output {
+        let active = self.active.expect("No active player");
+
+        match index {
+            PlayerId::Active => &self.data[active],
+            PlayerId::Inactive => &self.data[(active + 1) % 2],
+        }
+    }
+}
+
+impl IndexMut<&PlayerId> for PointerVec<Player> {
+    fn index_mut(&mut self, index: &PlayerId) -> &mut Self::Output {
+        let active = self.active.expect("No active player");
+
+        match index {
+            // unwrap because there is always an active player
+            PlayerId::Active => &mut self.data[active],
+            PlayerId::Inactive => &mut self.data[(active + 1) % 2],
+        }
     }
 }
 

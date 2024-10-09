@@ -1,4 +1,5 @@
 use std::{
+    borrow::Borrow,
     fmt::{Debug, Display},
     ops::Deref,
 };
@@ -86,15 +87,23 @@ impl App {
                 .data
                 .iter()
                 .enumerate()
-                .map(|(k, pokemon)| match self.games.players[i].roster.active {
-                    Some(active) => {
-                        if active == k {
-                            ListItem::from(format!("{}", pokemon.id)).fg(Color::Magenta)
-                        } else {
-                            ListItem::from(format!("{}", pokemon.id))
-                        }
+                .map(|(k, pokemon)| {
+                    let colour = if Some(k) == self.games.players[i].roster.active {
+                        Color::Magenta
+                    } else if self.games.players[i].roster.dead <= k {
+                        Color::Gray
+                    } else {
+                        Color::White
+                    };
+                    let mon_str = format!("{}", pokemon.id);
+                    let mut mon_str = format!("{:20}", mon_str);
+                    if let Some(nv) = pokemon.status.try_borrow().expect("blah").nv {
+                        let split_idx =
+                            mon_str.char_indices().rev().nth(2).map(|(i, _)| i).unwrap();
+                        let status_str = format!("{}", nv);
+                        mon_str.replace_range(split_idx.., &status_str);
                     }
-                    None => ListItem::from(format!("{}", pokemon.id)),
+                    ListItem::from(mon_str).fg(colour)
                 })
                 .collect();
 

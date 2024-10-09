@@ -1,6 +1,6 @@
 use crate::app::{App, AppResult};
 use crate::game::MoveSelection;
-use crate::game::PlayerId;
+use crate::selvec::PlayerId;
 use crate::ui::IMode;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -68,30 +68,23 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
         KeyCode::Enter => match app.ui.mode {
             IMode::PokeList => {
                 let _move = MoveSelection::Switch(app.ui.pokelist[0].selected().unwrap_or(7));
-                if app
-                    .games
-                    .list_valid_inputs(&PlayerId::Player1)
+                if app.games.players[0]
+                    .list_valid_inputs(&app.games.state)
                     .contains(&_move)
                 {
-                    app.games.player_mut(&PlayerId::Player1).inputs.push(_move);
+                    app.games.players[0].inputs.push(_move);
                     app.games.execute_turn();
                 }
             }
             IMode::MoveList => {
                 let _move = MoveSelection::Move(app.ui.movelist[0].selected().unwrap_or(7));
-                if app
-                    .games
-                    .list_valid_inputs(&PlayerId::Player1)
+                if app.games.players[0]
+                    .list_valid_inputs(&app.games.state)
                     .contains(&_move)
                     && app.ui.pokelist[0].selected().unwrap_or(7)
-                        == app
-                            .games
-                            .player(&PlayerId::Player1)
-                            .roster
-                            .active
-                            .unwrap_or(8)
+                        == app.games.players[0].roster.active.unwrap_or(8)
                 {
-                    app.games.player_mut(&PlayerId::Player1).inputs.push(_move);
+                    app.games.players[0].inputs.push(_move);
                     app.games.execute_turn();
                 }
             }

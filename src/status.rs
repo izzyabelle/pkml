@@ -52,7 +52,7 @@ impl Status {
 #[derive(Default, Debug)]
 pub struct StatusBlock {
     pub data: HashMap<Status, i8>,
-    nv: Option<Status>,
+    pub nv: Option<Status>,
 }
 
 impl StatusBlock {
