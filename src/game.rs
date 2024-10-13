@@ -86,7 +86,7 @@ impl Display for GameState {
                 Self::Completed(data) => match data {
                     GameResult::Winner(winner) => format!("Player {} won", winner + 1),
                     GameResult::Tie => String::from("Game tied"),
-                    GameResult::Incomplete => panic!("somethin wrongggg"),
+                    GameResult::Incomplete => panic!("somethin wronggg"),
                 },
             }
         )
