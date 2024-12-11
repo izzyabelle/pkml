@@ -31,7 +31,7 @@ impl Item {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum Ability {
     #[default]
     SandStream,

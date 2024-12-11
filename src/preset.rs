@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fmt::Display;
 use std::rc::Rc;
 
@@ -9,12 +8,10 @@ use crate::moves::{Move, MoveId};
 use crate::pokemon::Pokemon;
 use crate::poketype::{Poketype, Type};
 use crate::selvec::PointerVec;
-use crate::stat::StatBlock;
-use crate::stat::{Stat, StatId};
 use crate::trigger::Ability;
 use crate::trigger::Item;
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum PokeId {
     #[default]
     Jirachi,

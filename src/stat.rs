@@ -9,10 +9,9 @@ use std::{
 use crate::{
     bounded_i32::BoundedI32,
     game::WeatherId,
-    poketype::{Poketype, Type},
+    poketype::Poketype,
     status::{Status, StatusBlock},
     trigger::Item,
-    EmptyResult,
 };
 
 #[derive(Debug, Default, Clone)]

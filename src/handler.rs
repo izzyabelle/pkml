@@ -1,10 +1,7 @@
 use crate::app::{App, AppResult};
 use crate::game::MoveSelection;
-use crate::selvec::PlayerId;
 use crate::ui::IMode;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 
 pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {

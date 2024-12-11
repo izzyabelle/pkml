@@ -1,6 +1,6 @@
-use std::{borrow::Borrow, collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display};
 
-use rand::{random, thread_rng, Rng};
+use rand::{thread_rng, Rng};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum Status {

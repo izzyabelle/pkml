@@ -3,7 +3,6 @@ use std::fmt::Display;
 use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
-use ratatui::crossterm::cursor::MoveLeft;
 
 use crate::bounded_i32::BoundedI32;
 use crate::game::{GameState, HazardId, MoveSelection, WeatherId};
@@ -11,7 +10,7 @@ use crate::pokemon::Pokemon;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Player {
     pub name: &'static str,
     pub ai: bool,
@@ -20,7 +19,7 @@ pub struct Player {
     pub inputs: Vec<MoveSelection>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HazardBlock {
     pub stealth_rock: BoundedI32,
     pub toxic_spikes: BoundedI32,
@@ -53,7 +52,7 @@ impl Index<HazardId> for HazardBlock {
     type Output = BoundedI32;
     fn index(&self, index: HazardId) -> &Self::Output {
         match index {
-            HazardId::Stealthrock => &self.stealth_rock,
+            HazardId::StealthRock => &self.stealth_rock,
             HazardId::Spikes => &self.spikes,
             HazardId::ToxicSpikes => &self.toxic_spikes,
         }
@@ -63,7 +62,7 @@ impl Index<HazardId> for HazardBlock {
 impl IndexMut<HazardId> for HazardBlock {
     fn index_mut(&mut self, index: HazardId) -> &mut Self::Output {
         match index {
-            HazardId::Stealthrock => &mut self.stealth_rock,
+            HazardId::StealthRock => &mut self.stealth_rock,
             HazardId::Spikes => &mut self.spikes,
             HazardId::ToxicSpikes => &mut self.toxic_spikes,
         }

@@ -6,7 +6,7 @@ use crate::stat::StatId;
 use crate::status::Status;
 use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Move {
     pub id: MoveId,
     pub pp: BoundedI32,
@@ -92,7 +92,7 @@ impl From<MoveId> for Move {
                 poke_type: Type::Rock,
                 effects: vec![Effect::InflictHazard(
                     PlayerId::Inactive,
-                    HazardId::Stealthrock,
+                    HazardId::StealthRock,
                 )],
                 ..Default::default()
             },
@@ -280,7 +280,7 @@ pub enum MoveId {
     Switch(usize),
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Mtype {
     Physical,
     Special,

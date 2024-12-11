@@ -33,7 +33,7 @@ impl Poketype {
     pub fn contains(&self, value: Type) -> bool {
         match self {
             Poketype::Mono(data) => value == *data,
-            Poketype::Dual(data) => (value == data[0]) | (value == data[1]),
+            Poketype::Dual(data) => (value == data[0]) || (value == data[1]),
         }
     }
 }
@@ -63,30 +63,7 @@ pub enum Type {
 
 impl Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                Type::Normal => String::from("Normal"),
-                Type::Fire => String::from("Fire"),
-                Type::Water => String::from("Water"),
-                Type::Electric => String::from("Electric"),
-                Type::Grass => String::from("Grass"),
-                Type::Ice => String::from("Ice"),
-                Type::Fighting => String::from("Fighting"),
-                Type::Poison => String::from("Poison"),
-                Type::Ground => String::from("Ground"),
-                Type::Flying => String::from("Flying"),
-                Type::Psychic => String::from("Psychic"),
-                Type::Bug => String::from("Bug"),
-                Type::Rock => String::from("Rock"),
-                Type::Ghost => String::from("Ghost"),
-                Type::Dragon => String::from("Dragon"),
-                Type::Dark => String::from("Dark"),
-                Type::Steel => String::from("Steel"),
-                Type::None => String::from("None"),
-            }
-        )
+        write!(f, "{self:?}",)
     }
 }
 

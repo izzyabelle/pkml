@@ -1,7 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::fmt::Display;
-use std::ops::{Index, IndexMut};
 use std::rc::Rc;
 
 use rand::{thread_rng, Rng};
@@ -12,11 +10,11 @@ use crate::moves::Move;
 use crate::poketype::Poketype;
 use crate::preset::PokeId;
 use crate::selvec::PointerVec;
-use crate::stat::{Stat, StatBlock, StatId};
+use crate::stat::{StatBlock, StatId};
 use crate::status::{Status, StatusBlock};
 use crate::trigger::{Ability, Item};
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Pokemon {
     pub ability: Ability,
     pub hp: BoundedI32,

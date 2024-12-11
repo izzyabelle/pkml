@@ -1,22 +1,16 @@
-use std::{
-    borrow::Borrow,
-    fmt::{Debug, Display},
-    ops::Deref,
-};
+use std::fmt::Debug;
 
 use ratatui::{
-    buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
     widgets::{
-        Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Paragraph,
-        StatefulWidget, Widget, Wrap,
+        Block, BorderType, Borders, HighlightSpacing, List, ListItem, ListState, Paragraph, Wrap,
     },
     Frame,
 };
 
-use crate::{app::App, selvec::PointerVec};
+use crate::app::App;
 
 #[derive(Debug, Default)]
 pub struct Ui {

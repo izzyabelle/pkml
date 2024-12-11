@@ -1,6 +1,5 @@
 use crate::app::{App, AppResult};
 use crate::event::EventHandler;
-use crate::ui;
 use ratatui::backend::Backend;
 use ratatui::crossterm::event::{DisableMouseCapture, EnableMouseCapture};
 use ratatui::crossterm::terminal::{self, EnterAlternateScreen, LeaveAlternateScreen};
